@@ -501,17 +501,20 @@ function activate( context )
         }
     }
 
-    function applyNewTodoFilter() {
-        if ( !vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0 ) {
-            debug(`No workspace folders found`);
-            return Promise.resolve();
+    async function applyNewTodoFilter() {
+        if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+            debug('No workspace folders found');
+            return;
         }
 
-        // TODO handle multi folder workspace properly
+        // TODO: handle multi-folder workspace properly
         const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
         debug(`Going to run git diff in ${repoPath}`);
-        return git.getChangedFilesAndLines('master', repoPath).then((fileToLinesMap) => {
+
+        try {
+            const fileToLinesMap = await git.getChangedFilesAndLines('master', repoPath);
             debug(`git diff files: ${fileToLinesMap.size}\n${fileToLinesMap}`);
+
             searchResults.filter(match => {
                 const absFilePath = match.uri.fsPath;
                 const filePath = path.relative(repoPath, absFilePath);
@@ -523,7 +526,13 @@ function activate( context )
                     return line >= start && line <= end;
                 });
             });
-        });
+        } catch (e) {
+            var message = e.message;
+            if (e.stderr) {
+                message += " (" + e.stderr + ")";
+            }
+            vscode.window.showErrorMessage("Todo-Tree: new todo filter error:" + message);
+        }
     }
 
     async function iterateSearchList() {
