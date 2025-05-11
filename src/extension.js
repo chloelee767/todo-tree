@@ -508,9 +508,8 @@ function activate( context )
             return;
         }
 
-        // TODO handle not a git repo
+        // TODO handle partial failures for some folders
 
-        // TODO fix error handling eg. branch does not exist. currently it hangs.
         const gitBranch = config.newTodosGitBaseBranch();
         const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines(gitBranch, folder.uri.fsPath)));
 
@@ -525,24 +524,16 @@ function activate( context )
         });
         debug(`allFilesToLinesMap: ${allFilesToLinesMap.size}\n${allFilesToLinesMap}`);
 
-        try {
-            searchResults.filter(match => {
-                const filePath = match.uri.fsPath;
-                debug(`Checking file: ${filePath}`);
-                const line = match.line;
-                const ranges = allFilesToLinesMap.get(filePath) || [];
-                return ranges.some(([start, count]) => {
-                    const end = start + (count - 1);
-                    return line >= start && line <= end;
-                });
+        searchResults.filter(match => {
+            const filePath = match.uri.fsPath;
+            debug(`Checking file: ${filePath}`);
+            const line = match.line;
+            const ranges = allFilesToLinesMap.get(filePath) || [];
+            return ranges.some(([start, count]) => {
+                const end = start + (count - 1);
+                return line >= start && line <= end;
             });
-        } catch (e) {
-            var message = e.message;
-            if (e.stderr) {
-                message += " (" + e.stderr + ")";
-            }
-            vscode.window.showErrorMessage("Todo-Tree: new todo filter error:" + message);
-        }
+        });
     }
 
     async function iterateSearchList() {
@@ -551,7 +542,8 @@ function activate( context )
                 try {
                     await search(getOptions(entry));
                 } catch (e) {
-                    // Error already handled in search()
+                    // shouldn't happen, error already handled in search()
+                    vscode.window.showErrorMessage("Todo-Tree: search error: " + e.message);
                 }
             }
 
@@ -563,7 +555,11 @@ function activate( context )
 
             if (config.shouldShowNewTodosOnly()) {
                 debug('applying new todo filter');
-                await applyNewTodoFilter();
+                try {
+                    await applyNewTodoFilter();
+                } catch (e) {
+                    vscode.window.showErrorMessage("Todo-Tree: new todo filter error: " + e.message);
+                }
             }
         }
 
