@@ -16,6 +16,7 @@ var config = require( './config.js' );
 var utils = require( './utils.js' );
 var attributes = require( './attributes.js' );
 var searchResults = require( './searchResults.js' );
+var git = require( './git.js' );
 
 var searchList = [];
 var currentFilter;
@@ -500,24 +501,54 @@ function activate( context )
         }
     }
 
-    function iterateSearchList()
-    {
-        if( searchList.length > 0 )
-        {
-            return searchList.reduce( ( p, entry ) => p.finally( () => search( getOptions( entry ) ) ), Promise.resolve() )
-                .finally( () =>
-                {
-                    debug( "Found " + searchResults.count() + " items" );
-                    if( vscode.workspace.getConfiguration( 'todo-tree.ripgrep' ).get( 'passGlobsToRipgrep' ) !== true )
-                    {
+    function applyNewTodoFilter() {
+        if ( !vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0 ) {
+            debug(`No workspace folders found`);
+            return Promise.resolve();
+        }
+
+        // TODO handle multi folder workspace properly
+        const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        debug(`Going to run git diff in ${repoPath}`);
+        return git.getChangedFilesAndLines('master', repoPath).then((fileToLinesMap) => {
+            debug(`git diff files: ${fileToLinesMap.size}\n${fileToLinesMap}`);
+            searchResults.filter(match => {
+                const absFilePath = match.uri.fsPath;
+                const filePath = path.relative(repoPath, absFilePath);
+                debug(`Checking file: ${filePath}`);
+                const line = match.line;
+                const ranges = fileToLinesMap.get(filePath) || [];
+                return ranges.some(([start, count]) => {
+                    const end = start + (count - 1);
+                    return line >= start && line <= end;
+                });
+            });
+        });
+    }
+
+    function iterateSearchList() {
+        if (searchList.length > 0) {
+            return searchList.reduce((p, entry) => p.finally(() => search(getOptions(entry))), Promise.resolve())
+                .finally(() => {
+                    debug("Found " + searchResults.count() + " items");
+
+                    let chain = Promise.resolve();
+
+                    if (vscode.workspace.getConfiguration('todo-tree.ripgrep').get('passGlobsToRipgrep') !== true) {
                         applyGlobs();
                     }
-                    addResultsToTree();
-                    setButtonsAndContext();
-                } );
-        }
-        else
-        {
+
+                    if (config.shouldShowNewTodosOnly()) {
+                        debug('applying new todo filter');
+                        chain = chain.then(() => applyNewTodoFilter());
+                    }
+
+                    return chain.finally(() => {
+                        addResultsToTree();
+                        setButtonsAndContext();
+                    });
+                });
+        } else {
             addResultsToTree();
             setButtonsAndContext();
             return Promise.resolve();
