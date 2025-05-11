@@ -526,33 +526,30 @@ function activate( context )
         });
     }
 
-    function iterateSearchList() {
+    async function iterateSearchList() {
         if (searchList.length > 0) {
-            return searchList.reduce((p, entry) => p.finally(() => search(getOptions(entry))), Promise.resolve())
-                .finally(() => {
-                    debug("Found " + searchResults.count() + " items");
+            for (const entry of searchList) {
+                try {
+                    await search(getOptions(entry));
+                } catch (e) {
+                    // Error already handled in search()
+                }
+            }
 
-                    let chain = Promise.resolve();
+            debug("Found " + searchResults.count() + " items");
 
-                    if (vscode.workspace.getConfiguration('todo-tree.ripgrep').get('passGlobsToRipgrep') !== true) {
-                        applyGlobs();
-                    }
+            if (vscode.workspace.getConfiguration('todo-tree.ripgrep').get('passGlobsToRipgrep') !== true) {
+                applyGlobs();
+            }
 
-                    if (config.shouldShowNewTodosOnly()) {
-                        debug('applying new todo filter');
-                        chain = chain.then(() => applyNewTodoFilter());
-                    }
-
-                    return chain.finally(() => {
-                        addResultsToTree();
-                        setButtonsAndContext();
-                    });
-                });
-        } else {
-            addResultsToTree();
-            setButtonsAndContext();
-            return Promise.resolve();
+            if (config.shouldShowNewTodosOnly()) {
+                debug('applying new todo filter');
+                await applyNewTodoFilter();
+            }
         }
+
+        addResultsToTree();
+        setButtonsAndContext();
     }
 
     function getRootFolders()
