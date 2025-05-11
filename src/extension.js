@@ -502,25 +502,31 @@ function activate( context )
     }
 
     async function applyNewTodoFilter() {
-        if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
             debug('No workspace folders found');
             return;
         }
 
-        // TODO: handle multi-folder workspace properly
-        const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-        debug(`Going to run git diff in ${repoPath}`);
+        const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines('master', folder.uri.fsPath)));
+
+        const allFilesToLinesMap = new Map();
+        gitResults.map((fileToLinesMap, index) => {
+            const folder = workspaceFolders[index];
+            const repoPath = folder.uri.fsPath;
+            fileToLinesMap.forEach((lines, filePath) => {
+                const absFilePath = path.join(repoPath, filePath);
+                allFilesToLinesMap.set(absFilePath, lines);
+            });
+        });
+        debug(`allFilesToLinesMap: ${allFilesToLinesMap.size}\n${allFilesToLinesMap}`);
 
         try {
-            const fileToLinesMap = await git.getChangedFilesAndLines('master', repoPath);
-            debug(`git diff files: ${fileToLinesMap.size}\n${fileToLinesMap}`);
-
             searchResults.filter(match => {
-                const absFilePath = match.uri.fsPath;
-                const filePath = path.relative(repoPath, absFilePath);
+                const filePath = match.uri.fsPath;
                 debug(`Checking file: ${filePath}`);
                 const line = match.line;
-                const ranges = fileToLinesMap.get(filePath) || [];
+                const ranges = allFilesToLinesMap.get(filePath) || [];
                 return ranges.some(([start, count]) => {
                     const end = start + (count - 1);
                     return line >= start && line <= end;
