@@ -513,7 +513,7 @@ function activate( context )
         const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines('master', folder.uri.fsPath)));
 
         const allFilesToLinesMap = new Map();
-        gitResults.map((fileToLinesMap, index) => {
+        gitResults.forEach((fileToLinesMap, index) => {
             const folder = workspaceFolders[index];
             const repoPath = folder.uri.fsPath;
             fileToLinesMap.forEach((lines, filePath) => {
