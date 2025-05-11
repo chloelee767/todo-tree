@@ -280,6 +280,11 @@
                     "command": "todo-tree.reveal",
                     "when": "view =~/todo-tree/",
                     "group": "6-misc2"
+                },
+                {
+                    "command": "todo-tree.newTodosChangeBranch",
+                    "when": "view =~/todo-tree/",
+                    "group": "7-misc3"
                 }
             ],
             "commandPalette": [
@@ -467,6 +472,12 @@
             {
                 "command": "todo-tree.toggleNewTodosOnly",
                 "title": "%todo-tree.command.toggleNewTodosOnly.title%",
+                "category": "%todo-tree.command.category%",
+                "icon": "$(git-branch)"
+            },
+            {
+                "command": "todo-tree.newTodosChangeBranch",
+                "title": "%todo-tree.command.newTodosChangeBranch.title%",
                 "category": "%todo-tree.command.category%",
                 "icon": "$(git-branch)"
             },
@@ -1091,6 +1102,11 @@
                         "default": false,
                         "markdownDescription": "%todo-tree.configuration.tree.newTodosOnly.markdownDescription%",
                         "type": "boolean"
+                    },
+                    "todo-tree.tree.newTodosGitBaseBranch": {
+                        "default": "master",
+                        "markdownDescription": "%todo-tree.configuration.tree.newTodosGitBaseBranch.markdownDescription%",
+                        "type": "string"
                     }
                 }
             },

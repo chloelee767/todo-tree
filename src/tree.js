@@ -534,11 +534,11 @@ class TreeNodeProvider
                 result.unshift( scanModeNode );
             }
 
-            // TODO testing
             if ( config.shouldShowNewTodosOnly() )
             {
-                var gitBranchNode = {
-                    label: "New todos branched from master", notExported: true, isStatusNode: true, icon: "git-branch"
+                const gitBranch = config.newTodosGitBaseBranch();
+                const gitBranchNode = {
+                    label: `New todos (from ${gitBranch})`, notExported: true, isStatusNode: true, icon: "git-branch"
                 };
                 result.unshift( gitBranchNode );
             }

@@ -44,6 +44,11 @@ function shouldShowNewTodosOnly()
     return context.workspaceState.get( 'newTodosOnly', vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'newTodosOnly', false ) );
 }
 
+function newTodosGitBaseBranch()
+{
+    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'newTodosGitBaseBranch', 'master' );
+}
+
 function shouldShowCounts()
 {
     return vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'showCountsInTree', false );
@@ -306,3 +311,4 @@ module.exports.subTagClickUrl = subTagClickUrl;
 module.exports.shouldShowIconsInsteadOfTagsInStatusBar = shouldShowIconsInsteadOfTagsInStatusBar;
 module.exports.shouldShowActivityBarBadge = shouldShowActivityBarBadge;
 module.exports.shouldShowNewTodosOnly = shouldShowNewTodosOnly;
+module.exports.newTodosGitBaseBranch = newTodosGitBaseBranch;

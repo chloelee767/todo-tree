@@ -510,7 +510,9 @@ function activate( context )
 
         // TODO handle not a git repo
 
-        const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines('master', folder.uri.fsPath)));
+        // TODO fix error handling eg. branch does not exist. currently it hangs.
+        const gitBranch = config.newTodosGitBaseBranch();
+        const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines(gitBranch, folder.uri.fsPath)));
 
         const allFilesToLinesMap = new Map();
         gitResults.forEach((fileToLinesMap, index) => {
@@ -1576,6 +1578,19 @@ function activate( context )
             var current = config.shouldShowNewTodosOnly();
             context.workspaceState.update( 'newTodosOnly', !current ).then( rebuild );
         } ) );
+
+        context.subscriptions.push( vscode.commands.registerCommand( 'todo-tree.newTodosChangeBranch', function()
+        {
+            vscode.window.showInputBox( { prompt: "Git branch" } ).then(
+                function( branch )
+                {
+                    if ( !branch ) { return; }
+                    debug( `Setting newTodosGitBaseBranch to ${branch}` );
+                    vscode.workspace.getConfiguration( 'todo-tree.tree' ).update( 'newTodosGitBaseBranch', branch, vscode.ConfigurationTarget.Workspace ).then( rebuild );
+                }
+            );
+        } ) );
+
 
         context.subscriptions.push( vscode.commands.registerCommand( 'todo-tree.toggleItemCounts', function()
         {
