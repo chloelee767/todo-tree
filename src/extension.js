@@ -508,6 +508,8 @@ function activate( context )
             return;
         }
 
+        // TODO handle not a git repo
+
         const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines('master', folder.uri.fsPath)));
 
         const allFilesToLinesMap = new Map();
