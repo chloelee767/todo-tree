@@ -535,10 +535,13 @@ class TreeNodeProvider
             }
 
             // TODO testing
-            var gitBranchNode = {
-                label: "New todos branched from master", notExported: true, isStatusNode: true, icon: "search"
+            if ( config.shouldShowNewTodosOnly() )
+            {
+                var gitBranchNode = {
+                    label: "New todos branched from master", notExported: true, isStatusNode: true, icon: "search"
+                };
+                result.unshift( gitBranchNode );
             }
-            result.unshift( gitBranchNode );
 
             var compacted = [];
             result.map( function( child )

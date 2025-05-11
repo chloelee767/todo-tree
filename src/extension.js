@@ -1526,6 +1526,12 @@ function activate( context )
             }
         } ) );
 
+        context.subscriptions.push( vscode.commands.registerCommand( 'todo-tree.toggleNewTodosOnly', function()
+        {
+            var current = config.shouldShowNewTodosOnly();
+            context.workspaceState.update( 'newTodosOnly', !current ).then( rebuild );
+        } ) );
+
         context.subscriptions.push( vscode.commands.registerCommand( 'todo-tree.toggleItemCounts', function()
         {
             var current = vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'showCountsInTree' );
