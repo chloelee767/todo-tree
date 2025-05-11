@@ -538,7 +538,7 @@ class TreeNodeProvider
             if ( config.shouldShowNewTodosOnly() )
             {
                 var gitBranchNode = {
-                    label: "New todos branched from master", notExported: true, isStatusNode: true, icon: "search"
+                    label: "New todos branched from master", notExported: true, isStatusNode: true, icon: "git-branch"
                 };
                 result.unshift( gitBranchNode );
             }
