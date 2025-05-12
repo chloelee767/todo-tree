@@ -1,18 +1,35 @@
 const { spawn } = require('child_process');
 const readline = require('readline');
 
-function getChangedFilesAndLines(baseBranch, repoPath) {
+var debug;
+
+function init( debug_ ) {
+    debug = debug_; 
+}
+
+function getChangedFilesAndLines(baseBranch, repoPath, includeGlobs, excludeGlobs) {
     if (!baseBranch || !repoPath) {
         return Promise.reject(new Error('Base branch and repository path are required.'));
     }
 
-    const lineRanges = new Map();
-
-    // TODO use include/exclude glob patterns
-
     return new Promise((resolve, reject) => {
+        const lineRanges = new Map();
+
+        let globArgs = [];
+        if ( (includeGlobs.length + excludeGlobs.length) > 0 ) {
+            globArgs.push('--');
+            includeGlobs.forEach(element => {
+                globArgs.push(`:(glob)${element}`);
+            });
+            excludeGlobs.forEach(element => {
+                globArgs.push(`:(exclude)${element}`);
+            });
+        }
+
         // TODO get exact git binary
-        const gitDiff = spawn('git', ['diff', baseBranch, '--unified=0', '--no-ext-diff', '--no-prefix'], { cwd: repoPath });
+        const args = ['diff', baseBranch, '--unified=0', '--no-ext-diff', '--no-prefix', ...globArgs]
+        debug( `Git diff args: ${args}` );
+        const gitDiff = spawn('git', args, { cwd: repoPath });
 
         let currentFile = null;
         let currentFileLines = [];
@@ -59,4 +76,5 @@ function getChangedFilesAndLines(baseBranch, repoPath) {
     });
 }
 
+module.exports.init = init;
 module.exports.getChangedFilesAndLines = getChangedFilesAndLines;

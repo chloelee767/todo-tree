@@ -49,6 +49,11 @@ function newTodosGitBaseBranch()
     return vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'newTodosGitBaseBranch', 'master' );
 }
 
+function shouldPassGlobsToGitDiff()
+{
+    return vscode.workspace.getConfiguration( 'todo-tree.filtering' ).get( 'passGlobsToGitDiff', false );
+}
+
 function shouldShowCounts()
 {
     return vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'showCountsInTree', false );
@@ -312,3 +317,4 @@ module.exports.shouldShowIconsInsteadOfTagsInStatusBar = shouldShowIconsInsteadO
 module.exports.shouldShowActivityBarBadge = shouldShowActivityBarBadge;
 module.exports.shouldShowNewTodosOnly = shouldShowNewTodosOnly;
 module.exports.newTodosGitBaseBranch = newTodosGitBaseBranch;
+module.exports.shouldPassGlobsToGitDiff = shouldPassGlobsToGitDiff;

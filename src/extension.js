@@ -85,6 +85,7 @@ function activate( context )
     highlights.init( context, debug );
     utils.init( config );
     attributes.init( config );
+    git.init( debug );
 
     provider = new tree.TreeNodeProvider( context, debug, setButtonsAndContext );
     var statusBarIndicator = vscode.window.createStatusBarItem( vscode.StatusBarAlignment.Left, 0 );
@@ -390,6 +391,30 @@ function activate( context )
         return globs;
     }
 
+    function getGlobs() {
+        var allIncludeGlobs = []
+            .concat( vscode.workspace.getConfiguration('todo-tree.filtering').get('includeGlobs') )
+            .concat( context.workspaceState.get('includeGlobs') || [] );
+        var allExcludeGlobs = []
+            .concat( vscode.workspace.getConfiguration('todo-tree.filtering').get('excludeGlobs') )
+            .concat( context.workspaceState.get('excludeGlobs') || [] );
+
+        if ( config.shouldUseBuiltInFileExcludes() ) {
+            allExcludeGlobs = addGlobs( vscode.workspace.getConfiguration( 'files.exclude' ), allExcludeGlobs, true );
+        }
+        if ( config.shouldUseBuiltInSearchExcludes() ) {
+            allExcludeGlobs = addGlobs( vscode.workspace.getConfiguration( 'search.exclude' ), allExcludeGlobs, true );
+        }
+        if ( config.shouldIgnoreGitSubmodules() ) {
+            allExcludeGlobs = allExcludeGlobs.concat( context.workspaceState.get( 'submoduleExcludeGlobs' ) || [] );
+        }
+
+        return {
+            include: allIncludeGlobs,
+            exclude: allExcludeGlobs
+        };
+    }
+
     function getOptions( filename )
     {
         var c = vscode.workspace.getConfiguration( 'todo-tree' );
@@ -509,9 +534,17 @@ function activate( context )
         }
 
         // TODO handle partial failures for some folders
+        var allIncludeGlobs = [];
+        var allExcludeGlobs = [];
+        if ( config.shouldPassGlobsToGitDiff() ) {
+            const globs = getGlobs();
+            debug( `Git diff globs: ${JSON.stringify(globs)}` );
+            allIncludeGlobs = globs.include;
+            allExcludeGlobs = globs.exclude;
+        }
 
         const gitBranch = config.newTodosGitBaseBranch();
-        const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines(gitBranch, folder.uri.fsPath)));
+        const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines(gitBranch, folder.uri.fsPath, allIncludeGlobs, allExcludeGlobs)));
 
         const allFilesToLinesMap = new Map();
         gitResults.forEach((fileToLinesMap, index) => {

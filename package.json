@@ -958,6 +958,11 @@
                             "%todo-tree.configuration.filtering.useBuiltInExcludes.markdownEnumDescriptions.4%"
                         ],
                         "type": "string"
+                    },
+                    "todo-tree.filtering.passGlobsToGitDiff": {
+                        "default": true,
+                        "markdownDescription": "%todo-tree.configuration.filtering.passGlobsToGitDiff.markdownDescription%",
+                        "type": "boolean"
                     }
                 }
             },
