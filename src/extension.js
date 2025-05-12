@@ -529,7 +529,7 @@ function activate( context )
     async function applyNewTodoFilter() {
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) {
-            debug('No workspace folders found');
+            debug( 'No workspace folders found' );
             return;
         }
 
@@ -555,11 +555,11 @@ function activate( context )
                 allFilesToLinesMap.set(absFilePath, lines);
             });
         });
-        debug(`allFilesToLinesMap: ${allFilesToLinesMap.size}\n${allFilesToLinesMap}`);
+        debug( `New todos allFilesToLinesMap: ${allFilesToLinesMap.size}` );
 
         searchResults.filter(match => {
             const filePath = match.uri.fsPath;
-            debug(`Checking file: ${filePath}`);
+            debug( `Checking file: ${filePath}` );
             const line = match.line;
             const ranges = allFilesToLinesMap.get(filePath) || [];
             return ranges.some(([start, count]) => {
