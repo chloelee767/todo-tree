@@ -527,7 +527,7 @@ function activate( context )
     }
 
     async function applyNewTodoFilter() {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
+        const workspaceFolders = searchList;
         if (!workspaceFolders || workspaceFolders.length === 0) {
             debug( 'No workspace folders found' );
             return;
@@ -544,12 +544,12 @@ function activate( context )
         }
 
         const gitBranch = config.newTodosGitBaseBranch();
-        const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines(gitBranch, folder.uri.fsPath, allIncludeGlobs, allExcludeGlobs)));
+        const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines(gitBranch, folder, allIncludeGlobs, allExcludeGlobs)));
 
         const allFilesToLinesMap = new Map();
         gitResults.forEach((fileToLinesMap, index) => {
             const folder = workspaceFolders[index];
-            const repoPath = folder.uri.fsPath;
+            const repoPath = folder;
             fileToLinesMap.forEach((lines, filePath) => {
                 const absFilePath = path.join(repoPath, filePath);
                 allFilesToLinesMap.set(absFilePath, lines);
