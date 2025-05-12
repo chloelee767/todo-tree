@@ -46,7 +46,7 @@ function shouldShowNewTodosOnly()
 
 function newTodosGitBaseBranch()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'newTodosGitBaseBranch', 'master' );
+    return vscode.workspace.getConfiguration( 'todo-tree.filtering' ).get( 'newTodosGitBaseBranch', 'master' );
 }
 
 function shouldPassGlobsToGitDiff()

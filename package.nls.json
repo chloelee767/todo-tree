@@ -53,6 +53,7 @@
     "todo-tree.configuration.filtering.useBuiltInExcludes.markdownEnumDescriptions.2": "Use the Files:Exclude setting",
     "todo-tree.configuration.filtering.useBuiltInExcludes.markdownEnumDescriptions.3": "Use the Search:Exclude setting",
     "todo-tree.configuration.filtering.useBuiltInExcludes.markdownEnumDescriptions.4": "Use the Files:Exclude and the Search:Exclude setting",
+    "todo-tree.configuration.filtering.newTodosGitBaseBranch.markdownDescription": "The git branch to compare to when filtering for new TODOs.",
     "todo-tree.configuration.filtering.passGlobsToGitDiff.markdownDescription": "Pass the globs to git diff to limit the files that are checked for new TODOs, in order to make the git diff more efficient.",
     "todo-tree.configuration.general": "General",
     "todo-tree.configuration.general.debug.markdownDescription": "Create a debug channel in the Output view.",
@@ -139,6 +140,5 @@
     "todo-tree.configuration.tree.buttons.refresh.markdownDescription": "Show a refresh button in the tree view title bar.",
     "todo-tree.configuration.tree.buttons.expand.markdownDescription": "Show a button in the tree view title bar to expand or collapse the whole tree.",
     "todo-tree.configuration.tree.buttons.export.markdownDescription": "Show a button in the tree view title bar to create a file showing the tree content.",
-    "todo-tree.configuration.tree.newTodosGitBaseBranch.markdownDescription": "The git branch to compare to when filtering for new TODOs.",
     "todo-tree.configuration.tree.buttons.toggleNewTodosOnly.markdownDescription": "Show a button in the tree view title bar to toggle showing new TODOs only."
 }

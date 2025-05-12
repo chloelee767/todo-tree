@@ -965,6 +965,11 @@
                         ],
                         "type": "string"
                     },
+                    "todo-tree.filtering.newTodosGitBaseBranch": {
+                        "default": "master",
+                        "markdownDescription": "%todo-tree.configuration.filtering.newTodosGitBaseBranch.markdownDescription%",
+                        "type": "string"
+                    },
                     "todo-tree.filtering.passGlobsToGitDiff": {
                         "default": true,
                         "markdownDescription": "%todo-tree.configuration.filtering.passGlobsToGitDiff.markdownDescription%",
@@ -1113,11 +1118,6 @@
                         "default": false,
                         "markdownDescription": "%todo-tree.configuration.tree.newTodosOnly.markdownDescription%",
                         "type": "boolean"
-                    },
-                    "todo-tree.tree.newTodosGitBaseBranch": {
-                        "default": "master",
-                        "markdownDescription": "%todo-tree.configuration.tree.newTodosGitBaseBranch.markdownDescription%",
-                        "type": "string"
                     }
                 }
             },

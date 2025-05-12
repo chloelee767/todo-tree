@@ -1617,7 +1617,7 @@ function activate( context )
                 {
                     if ( !branch ) { return; }
                     debug( `Setting newTodosGitBaseBranch to ${branch}` );
-                    vscode.workspace.getConfiguration( 'todo-tree.tree' ).update( 'newTodosGitBaseBranch', branch, vscode.ConfigurationTarget.Workspace ).then( rebuild );
+                    vscode.workspace.getConfiguration( 'todo-tree.filtering' ).update( 'newTodosGitBaseBranch', branch, vscode.ConfigurationTarget.Workspace ).then( rebuild );
                 }
             );
         } ) );
