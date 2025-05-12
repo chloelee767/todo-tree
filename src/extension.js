@@ -773,6 +773,7 @@ function activate( context )
         var showRefreshButton = c.get( 'tree.buttons' ).refresh === true;
         var showExpandButton = c.get( 'tree.buttons' ).expand === true;
         var showExportButton = c.get( 'tree.buttons' ).export === true;
+        var showToggleNewTodosOnlyButton = c.get( 'tree.buttons' ).toggleNewTodosOnly === true;
 
         vscode.commands.executeCommand( 'setContext', 'todo-tree-show-reveal-button', showRevealButton && !c.get( 'tree.trackFile', false ) );
         vscode.commands.executeCommand( 'setContext', 'todo-tree-show-scan-mode-button', showScanModeButton );
@@ -783,6 +784,7 @@ function activate( context )
         vscode.commands.executeCommand( 'setContext', 'todo-tree-show-refresh-button', showRefreshButton );
         vscode.commands.executeCommand( 'setContext', 'todo-tree-show-expand-button', showExpandButton );
         vscode.commands.executeCommand( 'setContext', 'todo-tree-show-export-button', showExportButton );
+        vscode.commands.executeCommand( 'setContext', 'todo-tree-show-toggle-new-todos-only-button', showToggleNewTodosOnlyButton );
 
         vscode.commands.executeCommand( 'setContext', 'todo-tree-expanded', context.workspaceState.get( 'expanded', c.get( 'tree.expanded', false ) ) );
         vscode.commands.executeCommand( 'setContext', 'todo-tree-flat', context.workspaceState.get( 'flat', c.get( 'tree.flat', false ) ) );

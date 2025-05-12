@@ -139,5 +139,6 @@
     "todo-tree.configuration.tree.buttons.refresh.markdownDescription": "Show a refresh button in the tree view title bar.",
     "todo-tree.configuration.tree.buttons.expand.markdownDescription": "Show a button in the tree view title bar to expand or collapse the whole tree.",
     "todo-tree.configuration.tree.buttons.export.markdownDescription": "Show a button in the tree view title bar to create a file showing the tree content.",
-    "todo-tree.configuration.tree.newTodosGitBaseBranch.markdownDescription": "The git branch to compare to when filtering for new TODOs."
+    "todo-tree.configuration.tree.newTodosGitBaseBranch.markdownDescription": "The git branch to compare to when filtering for new TODOs.",
+    "todo-tree.configuration.tree.buttons.toggleNewTodosOnly.markdownDescription": "Show a button in the tree view title bar to toggle showing new TODOs only."
 }

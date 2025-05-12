@@ -146,7 +146,7 @@
                 },
                 {
                     "command": "todo-tree.toggleNewTodosOnly",
-                    "when": "view =~ /todo-tree/",
+                    "when": "view =~ /todo-tree/ && todo-tree-show-toggle-new-todos-only-button == true",
                     "group": "navigation@10"
                 }
             ],
@@ -282,10 +282,16 @@
                     "group": "6-misc2"
                 },
                 {
+                    "command": "todo-tree.toggleNewTodosOnly",
+                    "when": "view =~/todo-tree/",
+                    "group": "7-newTodos@1"
+                },
+                {
                     "command": "todo-tree.newTodosChangeBranch",
                     "when": "view =~/todo-tree/",
-                    "group": "7-misc3"
+                    "group": "7-newTodos@2"
                 }
+
             ],
             "commandPalette": [
                 {
@@ -1163,6 +1169,11 @@
                     "todo-tree.tree.buttons.export": {
                         "default": false,
                         "markdownDescription": "%todo-tree.configuration.tree.buttons.export.markdownDescription%",
+                        "type": "boolean"
+                    },
+                    "todo-tree.tree.buttons.toggleNewTodosOnly": {
+                        "default": true,
+                        "markdownDescription": "%todo-tree.configuration.tree.buttons.toggleNewTodosOnly.markdownDescription%",
                         "type": "boolean"
                     }
                 }
