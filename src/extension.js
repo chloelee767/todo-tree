@@ -1612,7 +1612,8 @@ function activate( context )
 
         context.subscriptions.push( vscode.commands.registerCommand( 'todo-tree.newTodosChangeBranch', function()
         {
-            vscode.window.showInputBox( { prompt: "Git branch" } ).then(
+            const current = config.newTodosGitBaseBranch();
+            vscode.window.showInputBox( { prompt: "Git branch / revision", value: current } ).then(
                 function( branch )
                 {
                     if ( !branch ) { return; }
