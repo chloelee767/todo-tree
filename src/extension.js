@@ -16,6 +16,7 @@ var config = require( './config.js' );
 var utils = require( './utils.js' );
 var attributes = require( './attributes.js' );
 var searchResults = require( './searchResults.js' );
+var git = require( './git.js' );
 
 var searchList = [];
 var currentFilter;
@@ -84,6 +85,7 @@ function activate( context )
     highlights.init( context, debug );
     utils.init( config );
     attributes.init( config );
+    git.init( debug );
 
     provider = new tree.TreeNodeProvider( context, debug, setButtonsAndContext );
     var statusBarIndicator = vscode.window.createStatusBarItem( vscode.StatusBarAlignment.Left, 0 );
@@ -389,6 +391,30 @@ function activate( context )
         return globs;
     }
 
+    function getGlobs() {
+        var allIncludeGlobs = []
+            .concat( vscode.workspace.getConfiguration('todo-tree.filtering').get('includeGlobs') )
+            .concat( context.workspaceState.get('includeGlobs') || [] );
+        var allExcludeGlobs = []
+            .concat( vscode.workspace.getConfiguration('todo-tree.filtering').get('excludeGlobs') )
+            .concat( context.workspaceState.get('excludeGlobs') || [] );
+
+        if ( config.shouldUseBuiltInFileExcludes() ) {
+            allExcludeGlobs = addGlobs( vscode.workspace.getConfiguration( 'files.exclude' ), allExcludeGlobs, true );
+        }
+        if ( config.shouldUseBuiltInSearchExcludes() ) {
+            allExcludeGlobs = addGlobs( vscode.workspace.getConfiguration( 'search.exclude' ), allExcludeGlobs, true );
+        }
+        if ( config.shouldIgnoreGitSubmodules() ) {
+            allExcludeGlobs = allExcludeGlobs.concat( context.workspaceState.get( 'submoduleExcludeGlobs' ) || [] );
+        }
+
+        return {
+            include: allIncludeGlobs,
+            exclude: allExcludeGlobs
+        };
+    }
+
     function getOptions( filename )
     {
         var c = vscode.workspace.getConfiguration( 'todo-tree' );
@@ -500,28 +526,78 @@ function activate( context )
         }
     }
 
-    function iterateSearchList()
-    {
-        if( searchList.length > 0 )
-        {
-            return searchList.reduce( ( p, entry ) => p.finally( () => search( getOptions( entry ) ) ), Promise.resolve() )
-                .finally( () =>
-                {
-                    debug( "Found " + searchResults.count() + " items" );
-                    if( vscode.workspace.getConfiguration( 'todo-tree.ripgrep' ).get( 'passGlobsToRipgrep' ) !== true )
-                    {
-                        applyGlobs();
-                    }
-                    addResultsToTree();
-                    setButtonsAndContext();
-                } );
+    async function applyNewTodoFilter() {
+        const workspaceFolders = searchList;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            debug( 'No workspace folders found' );
+            return;
         }
-        else
-        {
-            addResultsToTree();
-            setButtonsAndContext();
-            return Promise.resolve();
+
+        // TODO handle partial failures for some folders
+        var allIncludeGlobs = [];
+        var allExcludeGlobs = [];
+        if ( config.shouldPassGlobsToGitDiff() ) {
+            const globs = getGlobs();
+            debug( `Git diff globs: ${JSON.stringify(globs)}` );
+            allIncludeGlobs = globs.include;
+            allExcludeGlobs = globs.exclude;
         }
+
+        const gitBranch = config.newTodosGitBaseBranch();
+        const gitResults = await Promise.all(workspaceFolders.map(folder => git.getChangedFilesAndLines(gitBranch, folder, allIncludeGlobs, allExcludeGlobs)));
+
+        const allFilesToLinesMap = new Map();
+        gitResults.forEach((fileToLinesMap, index) => {
+            const folder = workspaceFolders[index];
+            const repoPath = folder;
+            fileToLinesMap.forEach((lines, filePath) => {
+                const absFilePath = path.join(repoPath, filePath);
+                allFilesToLinesMap.set(absFilePath, lines);
+            });
+        });
+        debug( `New todos allFilesToLinesMap: ${allFilesToLinesMap.size}` );
+
+        searchResults.filter(match => {
+            const filePath = match.uri.fsPath;
+            debug( `Checking file: ${filePath}` );
+            const line = match.line;
+            const ranges = allFilesToLinesMap.get(filePath) || [];
+            return ranges.some(([start, count]) => {
+                const end = start + (count - 1);
+                return line >= start && line <= end;
+            });
+        });
+    }
+
+    async function iterateSearchList() {
+        if (searchList.length > 0) {
+            for (const entry of searchList) {
+                try {
+                    await search(getOptions(entry));
+                } catch (e) {
+                    // shouldn't happen, error already handled in search()
+                    vscode.window.showErrorMessage("Todo-Tree: search error: " + e.message);
+                }
+            }
+
+            debug("Found " + searchResults.count() + " items");
+
+            if (vscode.workspace.getConfiguration('todo-tree.ripgrep').get('passGlobsToRipgrep') !== true) {
+                applyGlobs();
+            }
+
+            if (config.shouldShowNewTodosOnly()) {
+                debug('applying new todo filter');
+                try {
+                    await applyNewTodoFilter();
+                } catch (e) {
+                    vscode.window.showErrorMessage("Todo-Tree: new todo filter error: " + e.message);
+                }
+            }
+        }
+
+        addResultsToTree();
+        setButtonsAndContext();
     }
 
     function getRootFolders()
@@ -697,6 +773,7 @@ function activate( context )
         var showRefreshButton = c.get( 'tree.buttons' ).refresh === true;
         var showExpandButton = c.get( 'tree.buttons' ).expand === true;
         var showExportButton = c.get( 'tree.buttons' ).export === true;
+        var showToggleNewTodosOnlyButton = c.get( 'tree.buttons' ).toggleNewTodosOnly === true;
 
         vscode.commands.executeCommand( 'setContext', 'todo-tree-show-reveal-button', showRevealButton && !c.get( 'tree.trackFile', false ) );
         vscode.commands.executeCommand( 'setContext', 'todo-tree-show-scan-mode-button', showScanModeButton );
@@ -707,6 +784,7 @@ function activate( context )
         vscode.commands.executeCommand( 'setContext', 'todo-tree-show-refresh-button', showRefreshButton );
         vscode.commands.executeCommand( 'setContext', 'todo-tree-show-expand-button', showExpandButton );
         vscode.commands.executeCommand( 'setContext', 'todo-tree-show-export-button', showExportButton );
+        vscode.commands.executeCommand( 'setContext', 'todo-tree-show-toggle-new-todos-only-button', showToggleNewTodosOnlyButton );
 
         vscode.commands.executeCommand( 'setContext', 'todo-tree-expanded', context.workspaceState.get( 'expanded', c.get( 'tree.expanded', false ) ) );
         vscode.commands.executeCommand( 'setContext', 'todo-tree-flat', context.workspaceState.get( 'flat', c.get( 'tree.flat', false ) ) );
@@ -1525,6 +1603,26 @@ function activate( context )
                 showInTree( vscode.window.activeTextEditor.document.uri );
             }
         } ) );
+
+        context.subscriptions.push( vscode.commands.registerCommand( 'todo-tree.toggleNewTodosOnly', function()
+        {
+            var current = config.shouldShowNewTodosOnly();
+            context.workspaceState.update( 'newTodosOnly', !current ).then( rebuild );
+        } ) );
+
+        context.subscriptions.push( vscode.commands.registerCommand( 'todo-tree.newTodosChangeBranch', function()
+        {
+            const current = config.newTodosGitBaseBranch();
+            vscode.window.showInputBox( { prompt: "Git branch / revision", value: current } ).then(
+                function( branch )
+                {
+                    if ( !branch ) { return; }
+                    debug( `Setting newTodosGitBaseBranch to ${branch}` );
+                    vscode.workspace.getConfiguration( 'todo-tree.filtering' ).update( 'newTodosGitBaseBranch', branch, vscode.ConfigurationTarget.Workspace ).then( rebuild );
+                }
+            );
+        } ) );
+
 
         context.subscriptions.push( vscode.commands.registerCommand( 'todo-tree.toggleItemCounts', function()
         {

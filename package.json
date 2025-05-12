@@ -143,6 +143,11 @@
                     "command": "todo-tree.collapse",
                     "when": "view =~ /todo-tree/ && todo-tree-expanded == true && todo-tree-show-expand-button == true",
                     "group": "navigation@9"
+                },
+                {
+                    "command": "todo-tree.toggleNewTodosOnly",
+                    "when": "view =~ /todo-tree/ && todo-tree-show-toggle-new-todos-only-button == true",
+                    "group": "navigation@10"
                 }
             ],
             "view/item/context": [
@@ -275,7 +280,18 @@
                     "command": "todo-tree.reveal",
                     "when": "view =~/todo-tree/",
                     "group": "6-misc2"
+                },
+                {
+                    "command": "todo-tree.toggleNewTodosOnly",
+                    "when": "view =~/todo-tree/",
+                    "group": "7-newTodos@1"
+                },
+                {
+                    "command": "todo-tree.newTodosChangeBranch",
+                    "when": "view =~/todo-tree/",
+                    "group": "7-newTodos@2"
                 }
+
             ],
             "commandPalette": [
                 {
@@ -458,6 +474,18 @@
                 "title": "%todo-tree.command.reveal.title%",
                 "category": "%todo-tree.command.category%",
                 "icon": "$(location)"
+            },
+            {
+                "command": "todo-tree.toggleNewTodosOnly",
+                "title": "%todo-tree.command.toggleNewTodosOnly.title%",
+                "category": "%todo-tree.command.category%",
+                "icon": "$(git-branch)"
+            },
+            {
+                "command": "todo-tree.newTodosChangeBranch",
+                "title": "%todo-tree.command.newTodosChangeBranch.title%",
+                "category": "%todo-tree.command.category%",
+                "icon": "$(git-branch)"
             },
             {
                 "command": "todo-tree.resetCache",
@@ -936,6 +964,16 @@
                             "%todo-tree.configuration.filtering.useBuiltInExcludes.markdownEnumDescriptions.4%"
                         ],
                         "type": "string"
+                    },
+                    "todo-tree.filtering.newTodosGitBaseBranch": {
+                        "default": "master",
+                        "markdownDescription": "%todo-tree.configuration.filtering.newTodosGitBaseBranch.markdownDescription%",
+                        "type": "string"
+                    },
+                    "todo-tree.filtering.passGlobsToGitDiff": {
+                        "default": true,
+                        "markdownDescription": "%todo-tree.configuration.filtering.passGlobsToGitDiff.markdownDescription%",
+                        "type": "boolean"
                     }
                 }
             },
@@ -1075,6 +1113,11 @@
                         "default": true,
                         "markdownDescription": "%todo-tree.configuration.tree.trackFile.markdownDescription%",
                         "type": "boolean"
+                    },
+                    "todo-tree.tree.newTodosOnly": {
+                        "default": false,
+                        "markdownDescription": "%todo-tree.configuration.tree.newTodosOnly.markdownDescription%",
+                        "type": "boolean"
                     }
                 }
             },
@@ -1126,6 +1169,11 @@
                     "todo-tree.tree.buttons.export": {
                         "default": false,
                         "markdownDescription": "%todo-tree.configuration.tree.buttons.export.markdownDescription%",
+                        "type": "boolean"
+                    },
+                    "todo-tree.tree.buttons.toggleNewTodosOnly": {
+                        "default": true,
+                        "markdownDescription": "%todo-tree.configuration.tree.buttons.toggleNewTodosOnly.markdownDescription%",
                         "type": "boolean"
                     }
                 }

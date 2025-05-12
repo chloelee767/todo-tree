@@ -534,6 +534,15 @@ class TreeNodeProvider
                 result.unshift( scanModeNode );
             }
 
+            if ( config.shouldShowNewTodosOnly() )
+            {
+                const gitBranch = config.newTodosGitBaseBranch();
+                const gitBranchNode = {
+                    label: `New todos (from ${gitBranch})`, notExported: true, isStatusNode: true, icon: "git-branch"
+                };
+                result.unshift( gitBranchNode );
+            }
+
             var compacted = [];
             result.map( function( child )
             {

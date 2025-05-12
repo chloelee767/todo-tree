@@ -39,6 +39,21 @@ function shouldShowTagsOnly()
     return context.workspaceState.get( 'tagsOnly', vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'tagsOnly', false ) );
 }
 
+function shouldShowNewTodosOnly()
+{
+    return context.workspaceState.get( 'newTodosOnly', vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'newTodosOnly', false ) );
+}
+
+function newTodosGitBaseBranch()
+{
+    return vscode.workspace.getConfiguration( 'todo-tree.filtering' ).get( 'newTodosGitBaseBranch', 'master' );
+}
+
+function shouldPassGlobsToGitDiff()
+{
+    return vscode.workspace.getConfiguration( 'todo-tree.filtering' ).get( 'passGlobsToGitDiff', false );
+}
+
 function shouldShowCounts()
 {
     return vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'showCountsInTree', false );
@@ -258,6 +273,7 @@ function shouldShowActivityBarBadge()
     return vscode.workspace.getConfiguration( 'todo-tree.general' ).showActivityBarBadge;
 }
 
+
 module.exports.init = init;
 module.exports.shouldGroupByTag = shouldGroupByTag;
 module.exports.shouldGroupBySubTag = shouldGroupBySubTag;
@@ -299,3 +315,6 @@ module.exports.customHighlight = customHighlight;
 module.exports.subTagClickUrl = subTagClickUrl;
 module.exports.shouldShowIconsInsteadOfTagsInStatusBar = shouldShowIconsInsteadOfTagsInStatusBar;
 module.exports.shouldShowActivityBarBadge = shouldShowActivityBarBadge;
+module.exports.shouldShowNewTodosOnly = shouldShowNewTodosOnly;
+module.exports.newTodosGitBaseBranch = newTodosGitBaseBranch;
+module.exports.shouldPassGlobsToGitDiff = shouldPassGlobsToGitDiff;
