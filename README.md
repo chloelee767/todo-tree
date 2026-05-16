@@ -16,7 +16,7 @@ Found TODOs can also be highlighted in open files.
 
 ## Highlighting
 
->*New!:* If you just want to set different colours for tags, you can now enable `todo-tree.highlights.useColourScheme`. This will apply a set of colours (which can be changed) to the tags in the order that they are defined.
+>*New!:* If you just want to set different colours for tags, you can now enable `todo-tree-cl.highlights.useColourScheme`. This will apply a set of colours (which can be changed) to the tags in the order that they are defined.
 
 Highlighting tags is configurable. Use `defaultHighlight` to set up highlights for all tags. If you need to configure individual tags differently, use `customHighlight`. If settings are not specified in `customHighlight`, the value from `defaultHighlight` is used.
 
@@ -79,7 +79,7 @@ Both `defaultHighlight` and `customHighlight` allow for the following settings:
 Example:
 
 ```json
-"todo-tree.highlights.defaultHighlight": {
+"todo-tree-cl.highlights.defaultHighlight": {
     "icon": "alert",
     "type": "text",
     "foreground": "red",
@@ -87,7 +87,7 @@ Example:
     "opacity": 50,
     "iconColour": "blue"
 },
-"todo-tree.highlights.customHighlight": {
+"todo-tree-cl.highlights.customHighlight": {
     "TODO": {
         "icon": "check",
         "type": "line"
@@ -100,7 +100,7 @@ Example:
 }
 ```
 
-<sup>*Note: The highlight configuration is separate from the settings for the search. Adding settings in `customHighlight` does not automatically add the tags into `todo-tree.general.tags`.*</sup>
+<sup>*Note: The highlight configuration is separate from the settings for the search. Adding settings in `customHighlight` does not automatically add the tags into `todo-tree-cl.general.tags`.*</sup>
 
 <sup>*Note: Using the `capture-groups` setting in `type` may have an impact on performance with large files.
 
@@ -175,7 +175,7 @@ To make it easier to configure the tags, there are two commands available:
 
 ### Export
 
-The contents of the tree can be exported using **Todo Tree: Export Tree**. A read-only file will be created using the path specified with `todo-tree.general.exportPath`. The file can be saved using **File: Save As...**. *Note: Currently **File: Save** does not work which seems to be a VSCode bug (see <https://github.com/microsoft/vscode/issues/101952>).*
+The contents of the tree can be exported using **Todo Tree: Export Tree**. A read-only file will be created using the path specified with `todo-tree-cl.general.exportPath`. The file can be saved using **File: Save As...**. *Note: Currently **File: Save** does not work which seems to be a VSCode bug (see <https://github.com/microsoft/vscode/issues/101952>).*
 
 ### Switch Scope
 
@@ -189,38 +189,38 @@ The commands **Todo Tree: Go To Next** and **Todo Tree: Go To Previous** can be 
 
 The extension can be customised as follows (default values in brackets):
 
-**todo-tree.general.debug** (`false`)</br>
+**todo-tree-cl.general.debug** (`false`)</br>
 Show a debug channel in the output view.
 
-**todo-tree.general.periodicRefreshInteval** (`0`)</br>
+**todo-tree-cl.general.periodicRefreshInteval** (`0`)</br>
 Interval (in minutes) for automatically refreshing the tree. Set to '0' to disable, or to the number of minutes between refreshes. *Note: This is not typically needed as the tree will be refreshed when files change.*
 
-**todo-tree.general.automaticGitRefreshInterval** (`0`)</br>
+**todo-tree-cl.general.automaticGitRefreshInterval** (`0`)</br>
 Polling interval (in seconds) for automatically refreshing the tree when your repository is updated. This will check if your repository HEAD has changed and trigger a rescan of the workspace if it has. This replaces the file watcher functionality. Set to '0' to disable, or to the number of seconds between checks.
 
-**todo-tree.general.exportPath** (`~/todo-tree-%Y%m%d-%H%M.txt`)</br>
+**todo-tree-cl.general.exportPath** (`~/todo-tree-%Y%m%d-%H%M.txt`)</br>
 Path to use when exporting the tree. Environment variables will be expanded, e.g `${HOME}` and the path is passed through strftime (see <https://github.com/samsonjs/strftime>). Set the extension to `.json` to export as a JSON record.
 
-**todo-tree.general.rootFolder** (`""`)</br>
+**todo-tree-cl.general.rootFolder** (`""`)</br>
 By default, any open workspaces will have a tree in the view. Use this to force another folder to be the root of the tree. You can include environment variables and also use ${workspaceFolder}. e.g.</br>
-`"todo-tree.general.rootFolder": "${workspaceFolder}/test"`</br>
+`"todo-tree-cl.general.rootFolder": "${workspaceFolder}/test"`</br>
 or</br>
-`"todo-tree.general.rootFolder": "${HOME}/project"`.</br>
+`"todo-tree-cl.general.rootFolder": "${HOME}/project"`.</br>
 
 
 <sup>*Note: Other open files (outside of the rootFolder) will be shown (as they are opened) with their full path in brackets.*</sup>
 
-**todo-tree.general.schemes** (`['file','ssh','untitled']`)</br>
+**todo-tree-cl.general.schemes** (`['file','ssh','untitled']`)</br>
 Editor schemes to find TODOs in. To find TODOs in settings files, for instance, add `vscode-userdata` or for output windows, add `output`.
 
-**todo-tree.general.tags** (`["TODO","FIXME","BUG"]`)</br>
+**todo-tree-cl.general.tags** (`["TODO","FIXME","BUG"]`)</br>
 This defines the tags which are recognised as TODOs. This list is automatically inserted into the regex.
 
-**todo-tree.general.tagGroups** (`{}`)</br>
+**todo-tree-cl.general.tagGroups** (`{}`)</br>
 This setting allows multiple tags to be treated as a single group. Example:
 
 ```json
-    "todo-tree.general.tagGroups": {
+    "todo-tree-cl.general.tagGroups": {
         "FIXME": [
             "FIXME",
             "FIXIT",
@@ -231,60 +231,60 @@ This setting allows multiple tags to be treated as a single group. Example:
 
 This treats any of `FIXME`, `FIXIT` or `FIX` as `FIXME`. When the tree is grouped by tag, all of these will appear under the `FIXME` node. This also means that custom highlights are applied to the group, not each tag type.
 
-<sup>*Note: all tags in the group should also appear in `todo-tree.general.tags`.*</sup>
+<sup>*Note: all tags in the group should also appear in `todo-tree-cl.general.tags`.*</sup>
 
-**todo-tree.general.revealBehaviour** (`start of todo`)</br>
+**todo-tree-cl.general.revealBehaviour** (`start of todo`)</br>
 Change the cursor behaviour when double-clicking a todo in the tree. You can choose from: `start of todo` (moves the cursor to the beginning of the todo), `end of todo` (moves the cursor to the end of the todo) or `start of line` (moves the cursor to the start of the line).
 
-**todo-tree.general.statusBar** (`none`)</br>
+**todo-tree-cl.general.statusBar** (`none`)</br>
 What to show in the status bar - nothing (`none`), total count (`total`), counts per tag (`tags`), counts for the top three tags (`top three`) or counts for the current file only (`current file`).
 
-**todo-tree.general.statusBarClickBehaviour** (`reveal`)</br>
+**todo-tree-cl.general.statusBarClickBehaviour** (`reveal`)</br>
 Set the behaviour of clicking the status bar to either cycle through the status bar display formats (`cycle`), reveal the tree (`reveal`) or to toggle highlights (`toggle highlights`).
 
-**todo-tree.general.showIconsInsteadOfTagsInStatusBar** (`false`)</br>
+**todo-tree-cl.general.showIconsInsteadOfTagsInStatusBar** (`false`)</br>
 Show icons instead of tags in the status bar.
 
-**todo-tree.general.showActivityBarBadge** (`false`)</br>
+**todo-tree-cl.general.showActivityBarBadge** (`false`)</br>
 Show a badge in the activity bar indicating the total number of found TODOs.
 
 <sup>*Note: When the tree view is in the Explorer pane, the badge is displayed on the Explorer icon, which may not be desirable.*</sup>
 
-**todo-tree.filtering.includeGlobs** (`[]`)</br>
+**todo-tree-cl.filtering.includeGlobs** (`[]`)</br>
 Globs for use in limiting search results by inclusion, e.g. `[\"**/unit-tests/*.js\"]` to only show .js files in unit-tests subfolders. [Globs help](https://code.visualstudio.com/api/references/vscode-api#GlobPattern).
 
 <sup>*Note: globs paths are absolute - not relative to the current workspace.*</sup>
 
-**todo-tree.filtering.excludeGlobs** (`["**/node_modules/*/**"]`)</br>
+**todo-tree-cl.filtering.excludeGlobs** (`["**/node_modules/*/**"]`)</br>
 Globs for use in limiting search results by exclusion (applied after **includeGlobs**), e.g. `[\"**/*.txt\"]` to ignore all .txt files.
 
 <sup>*Note: `node_modules` are excluded by default.*</sup>
 
-**todo-tree.filtering.includedWorkspaces** (`[]`)</br>
+**todo-tree-cl.filtering.includedWorkspaces** (`[]`)</br>
 A list of workspace names to include as roots in the tree (wildcards can be used). An empty array includes all workspace folders.
 
-**todo-tree.filtering.excludedWorkspaces** (`[]`)</br>
+**todo-tree-cl.filtering.excludedWorkspaces** (`[]`)</br>
 A list of workspace names to exclude as roots in the tree (wildcards can be used).
 
-**todo-tree.filtering.passGlobsToRipgrep** (`true`)</br>
+**todo-tree-cl.filtering.passGlobsToRipgrep** (`true`)</br>
 Set this to false to apply the globs *after* the search (legacy behaviour).
 
-**todo-tree.filtering.useBuiltInExcludes** (`none`)</br>
+**todo-tree-cl.filtering.useBuiltInExcludes** (`none`)</br>
 Set this to use VSCode's built in files or search excludes. Can be one of `none`, `file excludes` (uses Files:Exclude), `search excludes` (Uses Search:Exclude) or `file and search excludes` (uses both).
 
-**todo-tree.filtering.ignoreGitSubmodules** (`false`)</br>
+**todo-tree-cl.filtering.ignoreGitSubmodules** (`false`)</br>
 If true, any subfolders containing a `.git` file will be ignored when searching.
 
-**todo-tree.filtering.includeHiddenFiles** (`false`)</br>
+**todo-tree-cl.filtering.includeHiddenFiles** (`false`)</br>
 If true, files starting with a period (.) will be included.
 
-**todo-tree.highlights.enabled** (`true`)</br>
+**todo-tree-cl.highlights.enabled** (`true`)</br>
 Set this to false to turn off highlighting.
 
-**todo-tree.highlights.highlightDelay** (`500`)</br>
+**todo-tree-cl.highlights.highlightDelay** (`500`)</br>
 The delay before highlighting (milliseconds).
 
-**todo-tree.highlights.defaultHighlight** (`{}`)</br>
+**todo-tree-cl.highlights.defaultHighlight** (`{}`)</br>
 Set default highlights. Example:
 
 ```json
@@ -296,7 +296,7 @@ Set default highlights. Example:
 }
 ```
 
-**todo-tree.highlights.customHighlight** (`{}`)</br>
+**todo-tree-cl.highlights.customHighlight** (`{}`)</br>
 Set highlights per tag (or tag group). Example:
 
 ```json
@@ -311,29 +311,29 @@ Set highlights per tag (or tag group). Example:
 }
 ```
 
-**todo-tree.highlights.useColourScheme** (`false`)</br>
+**todo-tree-cl.highlights.useColourScheme** (`false`)</br>
 Use a simple scheme for colouring highlights. This will simply apply a list of colours in the same order as the tags are defined. Use this as a much simpler alternative to setting up custom highlights for each tag.
 
-<sup>*Note: The colour scheme overrides the colours defined in* `todo-tree.highlights.defaultHighlight` *but not* `todo-tree.highlights.customHighlight`*.*</sup>
+<sup>*Note: The colour scheme overrides the colours defined in* `todo-tree-cl.highlights.defaultHighlight` *but not* `todo-tree-cl.highlights.customHighlight`*.*</sup>
 
-**todo-tree.highlights.backgroundColourScheme** (`["red","orange","yellow","green","blue","indigo","violet"]`)</br>
-Defines colours for use in conjunction with `todo-tree.highlights.useColourScheme` to colour highlights. Colours can be defined in the same way as other colours (e.g. hex code, theme names, etc.). If there are more tags than colours, the sequence is repeated.
+**todo-tree-cl.highlights.backgroundColourScheme** (`["red","orange","yellow","green","blue","indigo","violet"]`)</br>
+Defines colours for use in conjunction with `todo-tree-cl.highlights.useColourScheme` to colour highlights. Colours can be defined in the same way as other colours (e.g. hex code, theme names, etc.). If there are more tags than colours, the sequence is repeated.
 
-**todo-tree.highlights.foreroundColourScheme** (`["white","black","black","white","white","white","black"]`)</br>
-Defines colours for use in conjunction with `todo-tree.highlights.backgroundColourScheme` to colour highlights. These colours should be complementary to the background colours.
+**todo-tree-cl.highlights.foreroundColourScheme** (`["white","black","black","white","white","white","black"]`)</br>
+Defines colours for use in conjunction with `todo-tree-cl.highlights.backgroundColourScheme` to colour highlights. These colours should be complementary to the background colours.
 
-**todo-tree.regex.enableMultiLine** (`false`)</br>
+**todo-tree-cl.regex.enableMultiLine** (`false`)</br>
 Normally, multiline support is enabled by detecting the use of `\n` in the regex. Set this to `true`, to enable multiline support by default. This allows the use of `[\s\S]` as an alternative to matching any character including newlines.
 
-**todo-tree.regex.regex** (<tt>
+**todo-tree-cl.regex.regex** (<tt>
 &#x28;&#x2f;&#x2f;&#x7c;&#x23;&#x7c;&#x3c;&#x21;&#x2d;&#x2d;&#x7c;&#x3b;&#x7c;&#x2f;&#x5c;&#x5c;&#x2a;&#x7c;&#x5e;&#x7c;&#x5e;&#x5b;&#x20;&#x5c;&#x5c;&#x74;&#x5d;&#x2a;&#x28;&#x2d;&#x7c;&#x5c;&#x5c;&#x64;&#x2b;&#x2e;&#x29;&#x29;&#x5c;&#x5c;&#x73;&#x2a;&#x28;&#x24;&#x54;&#x41;&#x47;&#x53;&#x29;</tt>)</br>
 
 This defines the regex used to locate TODOs. By default, it searches for tags in comments starting with <tt>&#47;&#47;</tt>, <tt>#</tt>, <tt>;</tt>, <tt>&lt;!--</tt> or <tt>&#47;*</tt>, and also markdown todo lists. This should cover most languages. However if you want to refine it, make sure that the <tt>($TAGS)</tt> is kept as <tt>($TAGS)</tt> will be replaced by the expanded tag list. For some of the extension features to work, <tt>($TAGS)</tt> should be present in the regex, however, the basic functionality should still work if you need to explicitly expand the tag list.
 
 <sup>*Note: This is a [Rust regular expression](https://docs.rs/regex/1.0.0/regex)</a>, not javascript.*</sup>
 
-**todo-tree.regex.subTagRegex**
-This is a regular expression for processing the text to the right of the tag, e.g. for extracting a sub tag, or removing unwanted characters. Anything that the regex matches will be removed from the text. If a capture group is included, the contents are extracted into a sub tag, which will be used in the tree to group similar tags. The sub tag can also be used as a placeholder in `todo-tree.tree.subTagClickUrl` and `todo-tree.tree.labelFormat`. Sub tags can also be highlighted by specifying a section in the `todo-tree.highlights.customHighlights` setting. To highlight the sub tag itself, set "type" to "tag-and-subTag" in custom highlights for the tag.
+**todo-tree-cl.regex.subTagRegex**
+This is a regular expression for processing the text to the right of the tag, e.g. for extracting a sub tag, or removing unwanted characters. Anything that the regex matches will be removed from the text. If a capture group is included, the contents are extracted into a sub tag, which will be used in the tree to group similar tags. The sub tag can also be used as a placeholder in `todo-tree-cl.tree.subTagClickUrl` and `todo-tree-cl.tree.labelFormat`. Sub tags can also be highlighted by specifying a section in the `todo-tree-cl.highlights.customHighlights` setting. To highlight the sub tag itself, set "type" to "tag-and-subTag" in custom highlights for the tag.
 
 Examples:
 
@@ -341,119 +341,119 @@ Examples:
 
 `"^\s*\((.*)\)"` can be used to extract anything in parentheses after the tag and use it as a sub tag.
 
-**todo-tree.regex.regexCaseSensitive** (`true`)</br>
+**todo-tree-cl.regex.regexCaseSensitive** (`true`)</br>
 Set to false to allow tags to be matched regardless of case.
 
-**todo-tree.ripgrep.ripgrep** (`""`)</br>
+**todo-tree-cl.ripgrep.ripgrep** (`""`)</br>
 Normally, the extension will locate ripgrep itself as and when required. If you want to use an alternate version of ripgrep, set this to point to wherever it is installed.
 
-**todo-tree.ripgrep.ripgrepArgs** (`"--max-columns=1000"`)</br>
+**todo-tree-cl.ripgrep.ripgrepArgs** (`"--max-columns=1000"`)</br>
 Use this to pass additional arguments to ripgrep. e.g. `"-i"` to make the search case insensitive. *Use with caution!*
 
-**todo-tree.ripgrep.ripgrepMaxBuffer** (`200`)</br>
+**todo-tree-cl.ripgrep.ripgrepMaxBuffer** (`200`)</br>
 By default, the ripgrep process will have a buffer of 200KB. However, this is sometimes not enough for all the tags you might want to see. This setting can be used to increase the buffer size accordingly.
 
-**todo-tree.ripgrep.usePatternFile** (`true`)</br>
+**todo-tree-cl.ripgrep.usePatternFile** (`true`)</br>
 A pattern file is used with ripgrep by default. If you experience issues with deleting the pattern file, set this to false to use the legacy method of providing the regex to ripgrep.
 
-**todo-tree.tree.hideTreeWhenEmpty** (`true`)</br>
+**todo-tree-cl.tree.hideTreeWhenEmpty** (`true`)</br>
 Normally, the tree is removed from the explorer view if nothing is found. Set this to false to keep the view present.
 
-**todo-tree.tree.filterCaseSensitive** (`false`)</br>
+**todo-tree-cl.tree.filterCaseSensitive** (`false`)</br>
 Use this if you need the filtering to be case sensitive.
 
 <sup>*Note: this does not the apply to the search*.</sup>
 
-**todo-tree.tree.trackFile** (`true`)</br>
+**todo-tree-cl.tree.trackFile** (`true`)</br>
 Set to false if you want to prevent tracking the open file in the tree view.
 
-**todo-tree.tree.showBadges** (`true`)</br>
+**todo-tree-cl.tree.showBadges** (`true`)</br>
 Set to false to disable SCM status and badges in the tree. *
 
 <sup>*Note: This also unfortunately turns off themed icons.*</sup>
 
-**todo-tree.tree.expanded<sup>*</sup>** (`false`)</br>
+**todo-tree-cl.tree.expanded<sup>*</sup>** (`false`)</br>
 Set to true if you want new views to be expanded by default.
 
-**todo-tree.tree.flat<sup>*</sup>** (`false`)</br>
+**todo-tree-cl.tree.flat<sup>*</sup>** (`false`)</br>
 Set to true if you want new views to be flat by default.
 
-**todo-tree.tree.grouped<sup>*</sup>** (`false`)</br>
+**todo-tree-cl.tree.grouped<sup>*</sup>** (`false`)</br>
 Set to true if you want new views to be grouped by default.
 
-**todo-tree.tree.tagsOnly<sup>*</sup>** (`false`)</br>
+**todo-tree-cl.tree.tagsOnly<sup>*</sup>** (`false`)</br>
 Set to true if you want new views with tags only by default.
 
-**todo-tree.tree.sortTagsOnlyViewAlphabetically** (`false`)</br>
+**todo-tree-cl.tree.sortTagsOnlyViewAlphabetically** (`false`)</br>
 Sort items in the tags only view alphabetically instead of in order of the tags list.
 
-**todo-tree.tree.showCountsInTree** (`false`)</br>
+**todo-tree-cl.tree.showCountsInTree** (`false`)</br>
 Set to true to show counts of TODOs in the tree.
 
-**todo-tree.tree.labelFormat** (`${tag} ${after}`)</br>
+**todo-tree-cl.tree.labelFormat** (`${tag} ${after}`)</br>
 Format of the TODO item labels. Available placeholders are `${line}`, `${column}`, `${tag}`, `${before}` (text from before the tag), `${after}` (text from after the tag), `${filename}`, `${filepath}` and `${afterOrBefore}` (use "after" text or "before" text if after is empty). When using `${tag}` or `${subTag}` you can also transform the text with "uppercase", "lowercase" or "capitalize", e.g. `${tag:lowercase}`.
 
-**todo-tree.tree.scanMode** (`workspace`)</br>
+**todo-tree-cl.tree.scanMode** (`workspace`)</br>
 By default the extension scans the whole workspace (`workspace`). Use this to limit the search to only open files (`open files`) or only the current file (`current file`).
 
-**todo-tree.tree.showScanModeButton** (`false`)</br>
+**todo-tree-cl.tree.showScanModeButton** (`false`)</br>
 Show a button on the tree view header to switch the scanMode (see above).
 
-**todo-tree.tree.hideIconsWhenGroupedByTag** (`false`)</br>
+**todo-tree-cl.tree.hideIconsWhenGroupedByTag** (`false`)</br>
 Hide item icons when grouping by tag.
 
-**todo-tree.tree.sort** (`true`)</br>
+**todo-tree-cl.tree.sort** (`true`)</br>
 ripgrep searches using multiple threads to improve performance. The tree is sorted when it is populated so that it stays stable. If you want to use ripgrep's own sort arguments, set this to false.
 
 <sup>*Note: Depending on what scan mode you select, you may also want to disable auto-refresh when disabling the sort, otherwise the tree may still be unstable.*</sup>
 
-**todo-tree.tree.disableCompactFolders** (`false`)</br>
+**todo-tree-cl.tree.disableCompactFolders** (`false`)</br>
 The tree will normally respect the VSCode's `explorer.compactFolders` setting. Set this to true if you want to disable compact folders in the todo tree.
 
-**todo-tree.tree.tooltipFormat** (`${filepath}, ${line}`)</br>
-Format of the tree item tooltips. Uses the same placeholders as `todo-tree.tree.labelFormat` (see above).
+**todo-tree-cl.tree.tooltipFormat** (`${filepath}, ${line}`)</br>
+Format of the tree item tooltips. Uses the same placeholders as `todo-tree-cl.tree.labelFormat` (see above).
 
-**todo-tree.tree.subTagClickUrl**</br>
+**todo-tree-cl.tree.subTagClickUrl**</br>
 A URL (which can contain placeholders), which will be opened when clicking on a sub tag in the tree, e.g. `https://github.com/${subTag}` could be used if the sub tag extracts a user name.
 
-**todo-tree.tree.buttons.reveal** (`true`)</br>
+**todo-tree-cl.tree.buttons.reveal** (`true`)</br>
 Show a button in the tree view title bar to reveal the current item (only when track file is not enabled).
 
-**todo-tree.tree.buttons.scanMode** (`false`)</br>
+**todo-tree-cl.tree.buttons.scanMode** (`false`)</br>
 Show a button in the tree view title bar to change the Scan Mode setting.
 
-**todo-tree.tree.buttons.viewStyle** (`true`)</br>
+**todo-tree-cl.tree.buttons.viewStyle** (`true`)</br>
 Show a button in the tree view title bar to change the view style (tree, flat or tags only).
 
-**todo-tree.tree.buttons.groupByTag** (`true`)</br>
+**todo-tree-cl.tree.buttons.groupByTag** (`true`)</br>
 Show a button in the tree view title bar to enable grouping items by tag.
 
-**todo-tree.tree.buttons.groupBySubTag** (`false`)</br>
+**todo-tree-cl.tree.buttons.groupBySubTag** (`false`)</br>
 Show a button in the tree view title bar to enable grouping items by sub tag.
 
 <sup>*Note: This button will only be visible when sub tags have been found and are present in the tree.*</sup>
 
-**todo-tree.tree.buttons.filter** (`true`)</br>
+**todo-tree-cl.tree.buttons.filter** (`true`)</br>
 Show a button in the tree view title bar allowing the tree to be filtered by entering some text.
 
-**todo-tree.tree.buttons.refresh** (`true`)</br>
+**todo-tree-cl.tree.buttons.refresh** (`true`)</br>
 Show a refresh button in the tree view title bar.
 
-**todo-tree.tree.buttons.expand** (`true`)</br>
+**todo-tree-cl.tree.buttons.expand** (`true`)</br>
 Show a button in the tree view title bar to expand or collapse the whole tree.
 
-**todo-tree.tree.buttons.export** (`false`)</br>
+**todo-tree-cl.tree.buttons.export** (`false`)</br>
 Show a button in the tree view title bar to create a text file showing the tree content.
 
 <sup>*</sup>*Only applies to new workspaces. Once the view has been changed in the workspace, the current state is stored.*
 
-**todo-tree.filtering.scopes** (`{}`)</br>
-Defines a set of file scopes that can be quickly switched between using the *todo-tree.switchScope* command.
+**todo-tree-cl.filtering.scopes** (`{}`)</br>
+Defines a set of file scopes that can be quickly switched between using the *todo-tree-cl.switchScope* command.
 
 This is a complex configuration property that can only be configured through the configuration JSON file. For example
 
 ```json
-"todo-tree.scopes": [
+"todo-tree-cl.scopes": [
     {
         "name": "Production ",
         "excludeGlobs": [
@@ -474,10 +474,10 @@ This is a complex configuration property that can only be configured through the
 
 ### Multiline TODOs
 
-If the regex contains `\n`, then multiline TODOs will be enabled. In this mode, the search results are processed slightly differently. If results are found which do not contain any tags from `todo-tree.general.tags` it will be assumed that they belong to the previous result that did have a tag. For example, if you set the regex to something like:
+If the regex contains `\n`, then multiline TODOs will be enabled. In this mode, the search results are processed slightly differently. If results are found which do not contain any tags from `todo-tree-cl.general.tags` it will be assumed that they belong to the previous result that did have a tag. For example, if you set the regex to something like:
 
 ```json
-"todo-tree.regex.regex": "(//)\\s*($TAGS).*(\\n\\s*//\\s{2,}.*)*"
+"todo-tree-cl.regex.regex": "(//)\\s*($TAGS).*(\\n\\s*//\\s{2,}.*)*"
 ```
 
 This will now match multiline TODOs where the extra lines have at least two spaces between the comment characters and the TODO item. e.g.
@@ -491,7 +491,7 @@ This will now match multiline TODOs where the extra lines have at least two spac
 If you want to match multiline TODOs in C++ style multiline comment blocks, you'll need something like:
 
 ```json
-"todo-tree.regex.regex": "(/\\*)\\s*($TAGS).*(\\n\\s*(//|/\\*|\\*\\*)\\s{2,}.*)*"
+"todo-tree-cl.regex.regex": "(/\\*)\\s*($TAGS).*(\\n\\s*(//|/\\*|\\*\\*)\\s{2,}.*)*"
 ```
 
 which should match:
@@ -509,23 +509,23 @@ which should match:
 
 ### Excluding files and folders
 
-To restrict the set of folders which is searched, you can define `todo-tree.filtering.includeGlobs`. This is an array of globs which the search results are matched against. If the results match any of the globs, they will be shown. By default the array is empty, which matches everything. See [here](https://code.visualstudio.com/api/references/vscode-api#GlobPattern) for more information on globs.
+To restrict the set of folders which is searched, you can define `todo-tree-cl.filtering.includeGlobs`. This is an array of globs which the search results are matched against. If the results match any of the globs, they will be shown. By default the array is empty, which matches everything. See [here](https://code.visualstudio.com/api/references/vscode-api#GlobPattern) for more information on globs.
 
 <sup>*Note: globs paths are absolute - not relative to the current workspace.*</sup>
 
-To exclude folders/files from your search you can define `todo-tree.filtering.excludeGlobs`. If the search results match any of these globs, then the results will be ignored.
+To exclude folders/files from your search you can define `todo-tree-cl.filtering.excludeGlobs`. If the search results match any of these globs, then the results will be ignored.
 
 You can also include and exclude folders from the tree using the context menu. This folder filter is applied separately to the include/exclude globs.
 
-<sup>*Note: By default, ripgrep ignores files and folders from your `.gitignore` or `.ignore` files. If you want to include these files, set* `todo-tree.ripgrep.ripgrepArgs` *to* `--no-ignore`.</sup>
+<sup>*Note: By default, ripgrep ignores files and folders from your `.gitignore` or `.ignore` files. If you want to include these files, set* `todo-tree-cl.ripgrep.ripgrepArgs` *to* `--no-ignore`.</sup>
 
 ### Markdown Support
 
 When the extension was first written, very basic markdown support was added simply by adding a pattern to the default regex to match "`- [ ]`". A better way to handle markdown TODOs is to add "`(-|\d+.)`" to the list of "comments" in the first part of the regex and then adding "`[ ]`" and "`[x]`" to the list of tags in `settings.json`, e.g. :
 
 ```json
-"todo-tree.regex.regex": "(//|#|<!--|;|/\\*|^|^\\s*(-|\\d+.))\\s*($TAGS)"
-"todo-tree.general.tags": [
+"todo-tree-cl.regex.regex": "(//|#|<!--|;|/\\*|^|^\\s*(-|\\d+.))\\s*($TAGS)"
+"todo-tree-cl.general.tags": [
         "BUG",
         "HACK",
         "FIXME",
@@ -551,7 +551,7 @@ This will then match all of the following:
 This also allows custom highlighting to be applied, e.g.
 
 ```json
-"todo-tree.highlights.customHighlight": {
+"todo-tree-cl.highlights.customHighlight": {
     "[ ]": {
         "background": "#ff000080"
     },
@@ -569,7 +569,7 @@ Lastly, it will allow grouping by tag (and sub tags) to work and also work bette
 
 ## Known Issues
 
-Grouping by tag will only work when your configuration defines the tags using the `todo-tree.general.tags` setting. Older versions of the extension had the tags directly defined in the `todo-tree.regex.regex` whereas now, the regex replaces **$TAGS** with the contents of `todo-tree.general.tags`.
+Grouping by tag will only work when your configuration defines the tags using the `todo-tree-cl.general.tags` setting. Older versions of the extension had the tags directly defined in the `todo-tree-cl.regex.regex` whereas now, the regex replaces **$TAGS** with the contents of `todo-tree-cl.general.tags`.
 
 Grouping by tag doesn't work for markdown task list items as there is no tag to group with. The tree will show the files alongside the tag groups.
 
