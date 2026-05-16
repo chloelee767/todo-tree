@@ -15,11 +15,8 @@
     "engines": {
         "vscode": "^1.72.0"
     },
-    "repository": "https://github.com/Gruntfuggly/todo-tree",
-    "bugs": {
-        "url": "https://github.com/Gruntfuggly/todo-tree/issues",
-        "email": "gruntfuggly@googlemail.com"
-    },
+    "repository": "https://github.com/chloelee767/todo-tree",
+    "bugs": "https://github.com/chloelee767/todo-tree/issues",
     "scripts": {
         "test": "qunit",
         "vscode:prepublish": "node ./buildCodiconNames.js && webpack --mode production",

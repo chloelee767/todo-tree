@@ -114,7 +114,7 @@ Alternatively, open Visual Studio code, press `Ctrl+P` or `Cmd+P` and type:
 
 ### Source Code
 
-The source code is available on GitHub [here](https://github.com/Gruntfuggly/todo-tree).
+The source code is available on GitHub [here](https://github.com/chloelee767/todo-tree).
 
 ## Controls
 

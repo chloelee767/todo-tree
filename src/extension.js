@@ -1090,7 +1090,7 @@ function activate( context )
                     }
                     else if( button === MORE_INFO_BUTTON )
                     {
-                        vscode.env.openExternal( vscode.Uri.parse( "https://github.com/Gruntfuggly/todo-tree#markdown-support" ) );
+                        vscode.env.openExternal( vscode.Uri.parse( "https://github.com/chloelee767/todo-tree#markdown-support" ) );
                     }
                     else if( button === NEVER_SHOW_AGAIN_BUTTON )
                     {
