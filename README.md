@@ -8,7 +8,7 @@ Found TODOs can also be highlighted in open files.
 
 *Please see the [wiki](https://github.com/Gruntfuggly/todo-tree/wiki/Configuration-Examples) for configuration examples.*
 
-![screenshot](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/screenshot.png)
+![screenshot](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/screenshot.png)
 
 *Notes:*
 
@@ -120,22 +120,22 @@ The source code is available on GitHub [here](https://github.com/chloelee767/tod
 
 The tree view header can contain the following buttons:
 
-![collapse](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/collapse.png) - Collapse all tree nodes</br>
-![expand](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/expand.png) - Expand all tree nodes</br>
-![flat](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/flat.png) - Show the tree view as a flat list, with the full filename for each TODO</br>
-![tags](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/tags.png) - Show the view as a list of tags</br>
-![tree](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/tree.png) - Show the tree view as a tree with expandable nodes for each folder (default)</br>
-![tag](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/tag.png) - Group the TODOs in the tree by the tag</br>
-![notag](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/notag.png) - Organise the TODOs by file (default)</br>
-![filter](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/filter.png) - Only show items in the tree which match the entered filter text</br>
-![clear-filter](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/clear-filter.png) - Remove any active filter</br>
-![refresh](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/refresh.png) - Rebuild the tree</br>
-![scan-open-files](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/scan-open-files.png) - Show tags from open files only</br>
-![scan-current-file](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/scan-current-file.png) - Show tags from the current file</br>
-![scan-workspace](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/scan-workspace-only.png) - Show tags from workspace only</br>
-![scan-workspace](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/scan-workspace.png) - Show tags from workspace and open files</br>
-![reveal](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/reveal.png) - Show the current file in the tree</br>
-![export](https://raw.githubusercontent.com/Gruntfuggly/todo-tree/master/resources/button-icons/export.png) - Export the tree content to a file</br>
+![collapse](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/collapse.png) - Collapse all tree nodes</br>
+![expand](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/expand.png) - Expand all tree nodes</br>
+![flat](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/flat.png) - Show the tree view as a flat list, with the full filename for each TODO</br>
+![tags](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/tags.png) - Show the view as a list of tags</br>
+![tree](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/tree.png) - Show the tree view as a tree with expandable nodes for each folder (default)</br>
+![tag](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/tag.png) - Group the TODOs in the tree by the tag</br>
+![notag](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/notag.png) - Organise the TODOs by file (default)</br>
+![filter](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/filter.png) - Only show items in the tree which match the entered filter text</br>
+![clear-filter](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/clear-filter.png) - Remove any active filter</br>
+![refresh](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/refresh.png) - Rebuild the tree</br>
+![scan-open-files](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/scan-open-files.png) - Show tags from open files only</br>
+![scan-current-file](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/scan-current-file.png) - Show tags from the current file</br>
+![scan-workspace](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/scan-workspace-only.png) - Show tags from workspace only</br>
+![scan-workspace](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/scan-workspace.png) - Show tags from workspace and open files</br>
+![reveal](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/reveal.png) - Show the current file in the tree</br>
+![export](https://raw.githubusercontent.com/chloelee767/todo-tree/master/resources/button-icons/export.png) - Export the tree content to a file</br>
 
 ## Folder Filter Context Menu
 
