@@ -106,11 +106,11 @@ Example:
 
 ## Installing
 
-You can install the latest version of the extension via the Visual Studio Marketplace [here](https://marketplace.visualstudio.com/items?itemName=Gruntfuggly.todo-tree).
+You can install the latest version of the extension via the Visual Studio Marketplace [here](https://marketplace.visualstudio.com/items?itemName=chloelee.todo-tree-cl).
 
 Alternatively, open Visual Studio code, press `Ctrl+P` or `Cmd+P` and type:
 
-> ext install Gruntfuggly.todo-tree
+> ext install chloelee.todo-tree-cl
 
 ### Source Code
 
@@ -577,11 +577,9 @@ Tracking the file in the tree view when grouping by tag will reveal the first ta
 
 When there is no current workspace, default icons will be shown in the tree.
 
-## Donate
+## Credits
 
-If you find this extension useful, please feel free to donate [here](https://paypal.me/Gruntfuggly). Thanks!
-
-### Credits
+Original version by Gruntfuggly: <https://github.com/Gruntfuggly/todo-tree>
 
 Uses a modified version of [ripgrep-js](https://www.npmjs.com/package/ripgrep-js).
 
