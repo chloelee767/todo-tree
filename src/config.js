@@ -16,82 +16,82 @@ function init( c )
 
 function shouldGroupByTag()
 {
-    return context.workspaceState.get( 'groupedByTag', vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'groupedByTag', false ) );
+    return context.workspaceState.get( 'groupedByTag', vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).get( 'groupedByTag', false ) );
 }
 
 function shouldGroupBySubTag()
 {
-    return context.workspaceState.get( 'groupedBySubTag', vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'groupedBySubTag', false ) );
+    return context.workspaceState.get( 'groupedBySubTag', vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).get( 'groupedBySubTag', false ) );
 }
 
 function shouldExpand()
 {
-    return context.workspaceState.get( 'expanded', vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'expanded', false ) );
+    return context.workspaceState.get( 'expanded', vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).get( 'expanded', false ) );
 }
 
 function shouldFlatten()
 {
-    return context.workspaceState.get( 'flat', vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'flat', false ) );
+    return context.workspaceState.get( 'flat', vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).get( 'flat', false ) );
 }
 
 function shouldShowTagsOnly()
 {
-    return context.workspaceState.get( 'tagsOnly', vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'tagsOnly', false ) );
+    return context.workspaceState.get( 'tagsOnly', vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).get( 'tagsOnly', false ) );
 }
 
 function shouldShowNewTodosOnly()
 {
-    return context.workspaceState.get( 'newTodosOnly', vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'newTodosOnly', false ) );
+    return context.workspaceState.get( 'newTodosOnly', vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).get( 'newTodosOnly', false ) );
 }
 
 function newTodosGitBaseBranch()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.filtering' ).get( 'newTodosGitBaseBranch', 'master' );
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.filtering' ).get( 'newTodosGitBaseBranch', 'master' );
 }
 
 function shouldPassGlobsToGitDiff()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.filtering' ).get( 'passGlobsToGitDiff', false );
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.filtering' ).get( 'passGlobsToGitDiff', false );
 }
 
 function shouldShowCounts()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'showCountsInTree', false );
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).get( 'showCountsInTree', false );
 }
 
 function shouldHideIconsWhenGroupedByTag()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'hideIconsWhenGroupedByTag', false );
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).get( 'hideIconsWhenGroupedByTag', false );
 }
 
 function showFilterCaseSensitive()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'filterCaseSensitive', false );
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).get( 'filterCaseSensitive', false );
 }
 
 function isRegexCaseSensitive()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.regex' ).get( 'regexCaseSensitive', true );
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.regex' ).get( 'regexCaseSensitive', true );
 }
 
 function showBadges()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).get( 'showBadges', false );
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).get( 'showBadges', false );
 }
 
 function regex()
 {
     return {
         tags: tags(),
-        regex: vscode.workspace.getConfiguration( 'todo-tree.regex' ).get( 'regex' ),
-        caseSensitive: vscode.workspace.getConfiguration( 'todo-tree.regex' ).get( 'regexCaseSensitive' ),
-        multiLine: vscode.workspace.getConfiguration( 'todo-tree.regex' ).get( 'enableMultiLine' )
+        regex: vscode.workspace.getConfiguration( 'todo-tree-cl.regex' ).get( 'regex' ),
+        caseSensitive: vscode.workspace.getConfiguration( 'todo-tree-cl.regex' ).get( 'regexCaseSensitive' ),
+        multiLine: vscode.workspace.getConfiguration( 'todo-tree-cl.regex' ).get( 'enableMultiLine' )
     };
 }
 
 function subTagRegex()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.regex' ).get( 'subTagRegex' );
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.regex' ).get( 'subTagRegex' );
 }
 
 function ripgrepPath()
@@ -109,7 +109,7 @@ function ripgrepPath()
 
     var rgPath = "";
 
-    rgPath = exePathIsDefined( vscode.workspace.getConfiguration( 'todo-tree.ripgrep' ).ripgrep );
+    rgPath = exePathIsDefined( vscode.workspace.getConfiguration( 'todo-tree-cl.ripgrep' ).ripgrep );
     if( rgPath ) return rgPath;
 
     rgPath = exePathIsDefined( path.join( vscode.env.appRoot, "node_modules/vscode-ripgrep/bin/", exeName() ) );
@@ -129,61 +129,61 @@ function ripgrepPath()
 
 function tags()
 {
-    var tags = vscode.workspace.getConfiguration( 'todo-tree.general' ).tags;
+    var tags = vscode.workspace.getConfiguration( 'todo-tree-cl.general' ).tags;
     return tags.length > 0 ? tags : [ "TODO" ];
 }
 
 function shouldSortTagsOnlyViewAlphabetically()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).sortTagsOnlyViewAlphabetically;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).sortTagsOnlyViewAlphabetically;
 }
 
 function labelFormat()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).labelFormat;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).labelFormat;
 }
 
 function tooltipFormat()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).tooltipFormat;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).tooltipFormat;
 }
 
 function clickingStatusBarShouldRevealTree()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.general' ).statusBarClickBehaviour === "reveal";
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.general' ).statusBarClickBehaviour === "reveal";
 }
 
 function clickingStatusBarShouldToggleHighlights()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.general' ).statusBarClickBehaviour === "toggle highlights";
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.general' ).statusBarClickBehaviour === "toggle highlights";
 }
 
 function isValidScheme( uri )
 {
-    var schemes = vscode.workspace.getConfiguration( 'todo-tree.general' ).schemes;
+    var schemes = vscode.workspace.getConfiguration( 'todo-tree-cl.general' ).schemes;
     return uri && uri.scheme && schemes && schemes.length && schemes.indexOf( uri.scheme ) !== -1;
 }
 
 function shouldUseBuiltInFileExcludes()
 {
-    var useBuiltInExcludes = vscode.workspace.getConfiguration( 'todo-tree.filtering' ).useBuiltInExcludes;
+    var useBuiltInExcludes = vscode.workspace.getConfiguration( 'todo-tree-cl.filtering' ).useBuiltInExcludes;
     return useBuiltInExcludes === "file exclude" || useBuiltInExcludes === "file and search excludes";
 }
 
 function shouldUseBuiltInSearchExcludes()
 {
-    var useBuiltInExcludes = vscode.workspace.getConfiguration( 'todo-tree.filtering' ).useBuiltInExcludes;
+    var useBuiltInExcludes = vscode.workspace.getConfiguration( 'todo-tree-cl.filtering' ).useBuiltInExcludes;
     return useBuiltInExcludes === "search excludes" || useBuiltInExcludes === "file and search excludes";
 }
 
 function shouldIgnoreGitSubmodules()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.filtering' ).ignoreGitSubmodules;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.filtering' ).ignoreGitSubmodules;
 }
 
 function refreshTagGroupLookup()
 {
-    var tagGroups = vscode.workspace.getConfiguration( 'todo-tree.general' ).tagGroups;
+    var tagGroups = vscode.workspace.getConfiguration( 'todo-tree-cl.general' ).tagGroups;
     tagGroupLookup = Object.keys( tagGroups ).reduce( ( acc, propName ) =>
         tagGroups[ propName ].reduce( ( a, num ) =>
         {
@@ -200,7 +200,7 @@ function tagGroup( tag )
 function shouldCompactFolders()
 {
     return vscode.workspace.getConfiguration( 'explorer' ).compactFolders &&
-        vscode.workspace.getConfiguration( 'todo-tree.tree' ).disableCompactFolders !== true;
+        vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).disableCompactFolders !== true;
 }
 
 function shouldHideFromTree( tag )
@@ -220,57 +220,57 @@ function shouldHideFromActivityBar( tag )
 
 function shouldSortTree()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).sort;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).sort;
 }
 
 function scanMode()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).scanMode;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).scanMode;
 }
 
 function shouldShowScanModeInTree()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).showCurrentScanMode;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).showCurrentScanMode;
 }
 
 function shouldUseColourScheme()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.highlights' ).useColourScheme;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.highlights' ).useColourScheme;
 }
 
 function foregroundColourScheme()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.highlights' ).foregroundColourScheme;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.highlights' ).foregroundColourScheme;
 }
 
 function backgroundColourScheme()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.highlights' ).backgroundColourScheme;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.highlights' ).backgroundColourScheme;
 }
 
 function defaultHighlight()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.highlights' ).defaultHighlight;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.highlights' ).defaultHighlight;
 }
 
 function customHighlight()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.highlights' ).customHighlight;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.highlights' ).customHighlight;
 }
 
 function subTagClickUrl()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.tree' ).subTagClickUrl;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.tree' ).subTagClickUrl;
 }
 
 function shouldShowIconsInsteadOfTagsInStatusBar()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.general' ).showIconsInsteadOfTagsInStatusBar;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.general' ).showIconsInsteadOfTagsInStatusBar;
 }
 
 function shouldShowActivityBarBadge()
 {
-    return vscode.workspace.getConfiguration( 'todo-tree.general' ).showActivityBarBadge;
+    return vscode.workspace.getConfiguration( 'todo-tree-cl.general' ).showActivityBarBadge;
 }
 
 

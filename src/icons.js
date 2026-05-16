@@ -123,7 +123,7 @@ function validateIcons( workspace )
 {
     function checkIcon( setting )
     {
-        var icon = workspace.getConfiguration( 'todo-tree.highlights' ).get( setting + ".icon" );
+        var icon = workspace.getConfiguration( 'todo-tree-cl.highlights' ).get( setting + ".icon" );
         if( icon !== undefined )
         {
             if( utils.isCodicon( icon ) )
@@ -146,7 +146,7 @@ function validateIcons( workspace )
 
     checkIcon( 'defaultHighlight' );
 
-    var config = vscode.workspace.getConfiguration( 'todo-tree.highlights' );
+    var config = vscode.workspace.getConfiguration( 'todo-tree-cl.highlights' );
     Object.keys( config.customHighlight ).forEach( function( tag )
     {
         checkIcon( 'customHighlight.' + tag );

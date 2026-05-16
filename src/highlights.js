@@ -195,7 +195,7 @@ function showInGutter( tag )
 
 function getType( tag )
 {
-    return attributes.getAttribute( tag, 'type', vscode.workspace.getConfiguration( 'todo-tree.highlights' ).get( 'highlight' ) );
+    return attributes.getAttribute( tag, 'type', vscode.workspace.getConfiguration( 'todo-tree-cl.highlights' ).get( 'highlight' ) );
 }
 
 function editorId( editor )
@@ -242,7 +242,7 @@ function highlight( editor )
 
         decorations[ id ] = [];
 
-        if( vscode.workspace.getConfiguration( 'todo-tree.highlights' ).get( 'enabled', true ) )
+        if( vscode.workspace.getConfiguration( 'todo-tree-cl.highlights' ).get( 'enabled', true ) )
         {
             var text = editor.document.getText();
             var regex = utils.getRegexForEditorSearch( true );
@@ -374,7 +374,7 @@ function triggerHighlight( editor )
         {
             clearTimeout( highlightTimer[ id ] );
         }
-        highlightTimer[ id ] = setTimeout( highlight, vscode.workspace.getConfiguration( 'todo-tree.highlights' ).highlightDelay, editor );
+        highlightTimer[ id ] = setTimeout( highlight, vscode.workspace.getConfiguration( 'todo-tree-cl.highlights' ).highlightDelay, editor );
     }
 }
 

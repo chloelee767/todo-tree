@@ -679,7 +679,7 @@ class TreeNodeProvider
                     {
                         url = utils.formatLabel( url, node );
                         treeItem.command = {
-                            command: "todo-tree.openUrl",
+                            command: "todo-tree-cl.openUrl",
                             arguments: [
                                 url
                             ]
@@ -713,7 +713,7 @@ class TreeNodeProvider
                     treeItem.label = utils.formatLabel( format, node ) + ( node.pathLabel ? ( " " + node.pathLabel ) : "" );
                 }
 
-                var revealBehaviour = vscode.workspace.getConfiguration( 'todo-tree.general' ).get( 'revealBehaviour' );
+                var revealBehaviour = vscode.workspace.getConfiguration( 'todo-tree-cl.general' ).get( 'revealBehaviour' );
 
                 var todoSelection;
                 if( revealBehaviour === 'end of todo' )
@@ -733,7 +733,7 @@ class TreeNodeProvider
                 }
 
                 treeItem.command = {
-                    command: "todo-tree.revealInFile",
+                    command: "todo-tree-cl.revealInFile",
                     arguments: [
                         node.uri ? node.uri : vscode.Uri.file( node.fsPath ),
                         { selection: todoSelection }
