@@ -19,7 +19,7 @@
     "bugs": "https://github.com/chloelee767/todo-tree/issues",
     "scripts": {
         "test": "qunit",
-        "vscode:prepublish": "node ./buildCodiconNames.js && webpack --mode production",
+        "vscode:prepublish": "NODE_OPTIONS=--openssl-legacy-provider node ./buildCodiconNames.js && NODE_OPTIONS=--openssl-legacy-provider webpack --mode production",
         "webpack": "webpack --mode development",
         "webpack-dev": "webpack --mode development --watch"
     },
