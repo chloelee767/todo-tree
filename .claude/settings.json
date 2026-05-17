@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(vsce package*)"
+    ],
+    "deny": [
+      "Bash(vsce publish*)"
+    ]
+  }
+}
