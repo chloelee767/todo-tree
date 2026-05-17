@@ -36,7 +36,7 @@
                 {
                     "id": "todo-tree-cl-container",
                     "title": "%todo-tree-cl.activitybar.title%",
-                    "icon": "resources/todo-tree-cl-container.svg"
+                    "icon": "resources/todo-tree-container.svg"
                 }
             ]
         },
