@@ -935,7 +935,16 @@ module.exports.buildExtensionScenarioDefinitions = function( deps )
                 onDidChangeConfiguration: function( listener ) { return registerListener( workspaceListeners, 'configuration', listener ); },
                 onDidChangeWorkspaceFolders: function( listener ) { return registerListener( workspaceListeners, 'workspaceFolders', listener ); },
                 onDidChangeTextDocument: function( listener ) { return registerListener( workspaceListeners, 'changeText', listener ); },
-                openTextDocument: function() { return Promise.resolve(); }
+                openTextDocument: function() { return Promise.resolve(); },
+                createFileSystemWatcher: function()
+                {
+                    return {
+                        onDidChange: function() { return { dispose: function() {} }; },
+                        onDidCreate: function() { return { dispose: function() {} }; },
+                        onDidDelete: function() { return { dispose: function() {} }; },
+                        dispose: function() {}
+                    };
+                }
             }
         };
     }
@@ -1162,7 +1171,10 @@ module.exports.buildExtensionScenarioDefinitions = function( deps )
             customHighlight: function() { return highlightSettings.customHighlight; },
             foregroundColourScheme: function() { return highlightSettings.foregroundColourScheme.slice(); },
             backgroundColourScheme: function() { return highlightSettings.backgroundColourScheme.slice(); },
-            tagGroup: function() { return undefined; }
+            tagGroup: function() { return undefined; },
+            shouldShowNewTodosOnly: function() { return false; },
+            newTodosGitBaseBranch: function() { return ''; },
+            shouldPassGlobsToGitDiff: function() { return false; }
         };
         var fallbackUtilsStub = {
             init: function() {},
@@ -1465,6 +1477,13 @@ module.exports.buildExtensionScenarioDefinitions = function( deps )
                     readdir: function() { return Promise.resolve( [] ); },
                     unlink: function() { return Promise.resolve(); }
                 }
+            },
+            './newTodoFilter.js': {
+                init: function() {},
+                setEnabled: function() {},
+                isEnabled: function() { return false; },
+                isNewTodo: function() { return true; },
+                refresh: function() { return Promise.resolve( { allFailed: false } ); }
             },
             treeify: { asTree: function() { return ''; } },
             child_process: {

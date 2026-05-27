@@ -253,3 +253,31 @@ QUnit.test( 'ripgrepPath keeps older VS Code packaged ripgrep locations compatib
 
     assert.equal( config.ripgrepPath(), olderLegacyPath );
 } );
+
+QUnit.test( 'newTodosGitBaseBranch returns the configured setting default', function( assert )
+{
+    var config = loadConfigModule();
+    config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
+    assert.equal( config.newTodosGitBaseBranch(), '', 'defaults to empty string' );
+} );
+
+QUnit.test( 'shouldShowNewTodosOnly reads workspaceState newTodosOnly', function( assert )
+{
+    var config = loadConfigModule();
+    config.init( { workspaceState: { get: function( key, d ) { return key === 'newTodosOnly' ? true : d; } } } );
+    assert.equal( config.shouldShowNewTodosOnly(), true );
+} );
+
+QUnit.test( 'shouldShowNewTodosOnly defaults to false', function( assert )
+{
+    var config = loadConfigModule();
+    config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
+    assert.equal( config.shouldShowNewTodosOnly(), false, 'defaults to false' );
+} );
+
+QUnit.test( 'shouldPassGlobsToGitDiff defaults to true', function( assert )
+{
+    var config = loadConfigModule();
+    config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
+    assert.equal( config.shouldPassGlobsToGitDiff(), true, 'defaults to true' );
+} );

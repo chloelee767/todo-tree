@@ -18,6 +18,7 @@ var notebooks = require( './notebooks.js' );
 var commentPatternLanguageResolver = require( './commentPatternLanguageResolver.js' );
 var attributes = require( './attributes.js' );
 var searchResults = require( './searchResults.js' );
+var newTodoFilter = require( './newTodoFilter.js' );
 var detection = require( './detection.js' );
 var identity = require( './extensionIdentity.js' );
 var settingsSnapshotModule = require( './runtime/settingsSnapshot.js' );
@@ -266,6 +267,8 @@ function activate( context )
     config.init( context );
     highlights.init( context, debug );
     utils.init( config );
+    newTodoFilter.init( debug );
+    newTodoFilter.setEnabled( config.shouldShowNewTodosOnly() === true );
     rebuildSettingsSnapshot();
 
     highlights.setScanResultsProvider( function( document )
@@ -1889,7 +1892,7 @@ function activate( context )
             }
         }
 
-        replaceSearchResults( document.uri, getDocumentScanResults( document ), store );
+        replaceSearchResults( document.uri, applyNewTodoFilterToResults( document.uri, getDocumentScanResults( document ) ), store );
     }
 
     function refreshNotebookResults( notebook, store )
@@ -1915,7 +1918,7 @@ function activate( context )
             }
         }
 
-        replaceSearchResults( notebook.uri, scanNotebookDocument( notebook ), store );
+        replaceSearchResults( notebook.uri, applyNewTodoFilterToResults( notebook.uri, scanNotebookDocument( notebook ) ), store );
     }
 
     function refreshScanTarget( target, store )
@@ -2029,7 +2032,7 @@ function activate( context )
                 } ).then( function( results )
                 {
                     assertGenerationActive( generation );
-                    replaceSearchResults( uri, results, store );
+                    replaceSearchResults( uri, applyNewTodoFilterToResults( uri, results ), store );
                     completeScanFileProgress( generation, filePath );
                     scheduleStreamingTreeApply( generation, store );
                 } ).catch( function( error )
@@ -2145,7 +2148,7 @@ function activate( context )
                 } ).then( function( results )
                 {
                     assertGenerationActive( generation );
-                    replaceSearchResults( uri, results, store );
+                    replaceSearchResults( uri, applyNewTodoFilterToResults( uri, results ), store );
                     completeScanFileProgress( generation, filePath );
                     scheduleStreamingTreeApply( generation, store );
                 } ).catch( function( error )
@@ -2184,6 +2187,44 @@ function activate( context )
 
             return scheduler.wait();
         } );
+    }
+
+    function applyNewTodoFilterToResults( uri, results )
+    {
+        if( newTodoFilter.isEnabled() !== true )
+        {
+            return results;
+        }
+        return results.filter( function( result )
+        {
+            return newTodoFilter.isNewTodo( uri.fsPath, result.line );
+        } );
+    }
+
+    function getGitDiffGlobs()
+    {
+        if( config.shouldPassGlobsToGitDiff() !== true )
+        {
+            return { include: [], exclude: [] };
+        }
+
+        var includeGlobs = []
+            .concat( getSetting( 'filtering.includeGlobs', [] ) )
+            .concat( context.workspaceState.get( 'includeGlobs' ) || [] );
+        var excludeGlobs = []
+            .concat( getSetting( 'filtering.excludeGlobs', [] ) )
+            .concat( context.workspaceState.get( 'excludeGlobs' ) || [] );
+
+        if( config.shouldUseBuiltInFileExcludes() )
+        {
+            excludeGlobs = addGlobs( vscode.workspace.getConfiguration( 'files.exclude' ), excludeGlobs );
+        }
+        if( config.shouldUseBuiltInSearchExcludes() )
+        {
+            excludeGlobs = addGlobs( vscode.workspace.getConfiguration( 'search.exclude' ), excludeGlobs );
+        }
+
+        return { include: includeGlobs, exclude: excludeGlobs };
     }
 
     function applyGlobs( store )
@@ -2303,7 +2344,15 @@ function activate( context )
 
         nextSearchResults = searchResults.createStore();
 
-        return iterateSearchList( generation, nextSearchResults ).then( function()
+        newTodoFilter.setEnabled( config.shouldShowNewTodosOnly() === true );
+        return newTodoFilter.refresh( config.newTodosGitBaseBranch(), searchList, getGitDiffGlobs() ).then( function( summary )
+        {
+            if( summary && summary.allFailed === true && newTodoFilter.isEnabled() === true )
+            {
+                vscode.window.showWarningMessage( identity.DISPLAY_NAME + ": could not compute git diff for new-todos filter (check base branch '" + config.newTodosGitBaseBranch() + "')" );
+            }
+            return iterateSearchList( generation, nextSearchResults );
+        } ).then( function()
         {
             assertGenerationActive( generation );
             var refreshTargets = getRefreshTargets( searchList );
@@ -2478,6 +2527,7 @@ function activate( context )
         var showRefreshButton = treeButtons.refresh === true;
         var showExpandButton = treeButtons.expand === true;
         var showExportButton = treeButtons.export === true;
+        var showToggleNewTodosOnlyButton = treeButtons.toggleNewTodosOnly === true;
         var totalBusyCount = Object.keys( treeBusyStateCounts ).reduce( function( total, key )
         {
             return total + treeBusyStateCounts[ key ];
@@ -2496,6 +2546,7 @@ function activate( context )
             { suffix: 'show-refresh-button', value: showRefreshButton },
             { suffix: 'show-expand-button', value: showExpandButton },
             { suffix: 'show-export-button', value: showExportButton },
+            { suffix: 'show-toggle-new-todos-only-button', value: showToggleNewTodosOnlyButton },
             { suffix: 'expanded', value: config.shouldExpand() },
             { suffix: 'flat', value: isFlat },
             { suffix: 'tags-only', value: isTagsOnly },
@@ -3587,6 +3638,61 @@ function activate( context )
             return updateSetting( 'tree.disableCompactFolders', !current, vscode.ConfigurationTarget.Workspace );
         } );
 
+        function promptForNewTodosBranch()
+        {
+            var current = config.newTodosGitBaseBranch();
+            return vscode.window.showInputBox( { prompt: "Git branch / revision to diff against", value: current } ).then( function( branch )
+            {
+                if( !branch )
+                {
+                    return false;
+                }
+                debug( "Setting newTodosGitBaseBranch to " + branch );
+                return updateSetting( 'filtering.newTodosGitBaseBranch', branch, vscode.ConfigurationTarget.Workspace ).then( function() { return true; } );
+            } );
+        }
+
+        registerCommandPair( 'toggleNewTodosOnly', function()
+        {
+            var current = config.shouldShowNewTodosOnly();
+            var turningOn = !current;
+
+            // Turning on with no base branch configured: prompt first (spec: error handling).
+            if( turningOn === true && !config.newTodosGitBaseBranch() )
+            {
+                promptForNewTodosBranch().then( function( didSet )
+                {
+                    if( didSet !== true )
+                    {
+                        return;
+                    }
+                    newTodoFilter.setEnabled( true );
+                    context.workspaceState.update( 'newTodosOnly', true ).then( rebuild );
+                } ).catch( function( err )
+                {
+                    vscode.window.showErrorMessage( identity.DISPLAY_NAME + ": failed to set base branch (" + err.message + ")" );
+                } );
+                return;
+            }
+
+            newTodoFilter.setEnabled( turningOn );
+            context.workspaceState.update( 'newTodosOnly', turningOn ).then( rebuild );
+        } );
+
+        registerCommandPair( 'newTodosChangeBranch', function()
+        {
+            promptForNewTodosBranch().then( function( didSet )
+            {
+                if( didSet === true )
+                {
+                    rebuild();
+                }
+            } ).catch( function( err )
+            {
+                vscode.window.showErrorMessage( identity.DISPLAY_NAME + ": failed to set base branch (" + err.message + ")" );
+            } );
+        } );
+
         registerCommandPair( 'goToNext', function()
         {
             var editor = vscode.window.activeTextEditor;
@@ -3960,6 +4066,28 @@ function activate( context )
         {
             documentChanged( e.document );
         } ) );
+
+        var gitStateRefreshTimer;
+        function scheduleGitStateRescan()
+        {
+            if( newTodoFilter.isEnabled() !== true )
+            {
+                return;
+            }
+            clearTimeout( gitStateRefreshTimer );
+            gitStateRefreshTimer = setTimeout( rebuild, 300 );
+        }
+
+        var gitHeadWatcher = vscode.workspace.createFileSystemWatcher( '**/.git/HEAD' );
+        var gitRefsWatcher = vscode.workspace.createFileSystemWatcher( '**/.git/refs/**' );
+        [ gitHeadWatcher, gitRefsWatcher ].forEach( function( watcher )
+        {
+            watcher.onDidChange( scheduleGitStateRescan );
+            watcher.onDidCreate( scheduleGitStateRescan );
+            watcher.onDidDelete( scheduleGitStateRescan );
+            context.subscriptions.push( watcher );
+        } );
+        context.subscriptions.push( { dispose: function() { clearTimeout( gitStateRefreshTimer ); } } );
 
         context.subscriptions.push( outputChannel );
 

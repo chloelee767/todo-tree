@@ -408,6 +408,21 @@ function shouldShowActivityBarBadge()
     return identity.getSetting( 'general.showActivityBarBadge', false );
 }
 
+function newTodosGitBaseBranch()
+{
+    return identity.getSetting( 'filtering.newTodosGitBaseBranch', '' );
+}
+
+function shouldShowNewTodosOnly()
+{
+    return context.workspaceState.get( 'newTodosOnly', identity.getSetting( 'filtering.newTodosOnly', false ) );
+}
+
+function shouldPassGlobsToGitDiff()
+{
+    return identity.getSetting( 'filtering.passGlobsToGitDiff', true );
+}
+
 module.exports.init = init;
 module.exports.shouldGroupByTag = shouldGroupByTag;
 module.exports.shouldGroupBySubTag = shouldGroupBySubTag;
@@ -449,6 +464,9 @@ module.exports.customHighlight = customHighlight;
 module.exports.subTagClickUrl = subTagClickUrl;
 module.exports.shouldShowIconsInsteadOfTagsInStatusBar = shouldShowIconsInsteadOfTagsInStatusBar;
 module.exports.shouldShowActivityBarBadge = shouldShowActivityBarBadge;
+module.exports.newTodosGitBaseBranch = newTodosGitBaseBranch;
+module.exports.shouldShowNewTodosOnly = shouldShowNewTodosOnly;
+module.exports.shouldPassGlobsToGitDiff = shouldPassGlobsToGitDiff;
 module.exports.getTreeStateValue = getTreeStateValue;
 module.exports.setTreeStateOverride = setTreeStateOverride;
 module.exports.setTreeStateOverrides = setTreeStateOverrides;
