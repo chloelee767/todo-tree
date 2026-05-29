@@ -106,13 +106,11 @@ QUnit.test( 'issue #883 notebook scanning keeps vscode-notebook-cell enabled in 
     assert.ok( legacySchemes.default.indexOf( 'vscode-notebook-cell' ) !== -1 );
 } );
 
-QUnit.test( 'toggle new todos only button defaults to enabled in both namespaces', function( assert )
+QUnit.test( 'toggle new todos only button defaults to enabled', function( assert )
 {
-    var currentButtonSetting = getConfigurationProperty( 'better-todo-tree.tree.buttons.toggleNewTodosOnly' );
-    var legacyButtonSetting = getConfigurationProperty( 'todo-tree.tree.buttons.toggleNewTodosOnly' );
+    var buttonSetting = getConfigurationProperty( 'better-todo-tree.tree.buttons.toggleNewTodosOnly' );
 
-    assert.strictEqual( currentButtonSetting.default, true );
-    assert.strictEqual( legacyButtonSetting.default, true );
+    assert.strictEqual( buttonSetting.default, true );
 } );
 
 QUnit.test( 'context menus target stable todo-tree views with rebranded context keys', function( assert )

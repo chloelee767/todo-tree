@@ -1428,27 +1428,11 @@
                         "markdownDescription": "%filteringNewTodosOnly.description%",
                         "scope": "resource"
                     },
-                    "todo-tree.filtering.newTodosOnly": {
-                        "type": "boolean",
-                        "default": false,
-                        "markdownDescription": "%filteringNewTodosOnly.description%",
-                        "scope": "resource",
-                        "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",
-                        "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
-                    },
                     "better-todo-tree.filtering.newTodosGitBaseBranch": {
                         "type": "string",
                         "default": "",
                         "markdownDescription": "%newTodosGitBaseBranch.description%",
                         "scope": "resource"
-                    },
-                    "todo-tree.filtering.newTodosGitBaseBranch": {
-                        "type": "string",
-                        "default": "",
-                        "markdownDescription": "%newTodosGitBaseBranch.description%",
-                        "scope": "resource",
-                        "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",
-                        "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
                     },
                     "better-todo-tree.filtering.passGlobsToGitDiff": {
                         "type": "boolean",
@@ -1971,13 +1955,6 @@
                         "type": "boolean",
                         "default": true,
                         "markdownDescription": "%treeButtons.toggleNewTodosOnly%"
-                    },
-                    "todo-tree.tree.buttons.toggleNewTodosOnly": {
-                        "type": "boolean",
-                        "default": true,
-                        "markdownDescription": "%treeButtons.toggleNewTodosOnly%",
-                        "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",
-                        "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
                     }
                 }
             },
