@@ -1969,12 +1969,12 @@
                     },
                     "better-todo-tree.tree.buttons.toggleNewTodosOnly": {
                         "type": "boolean",
-                        "default": false,
+                        "default": true,
                         "markdownDescription": "%treeButtons.toggleNewTodosOnly%"
                     },
                     "todo-tree.tree.buttons.toggleNewTodosOnly": {
                         "type": "boolean",
-                        "default": false,
+                        "default": true,
                         "markdownDescription": "%treeButtons.toggleNewTodosOnly%",
                         "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",
                         "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
