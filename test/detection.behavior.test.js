@@ -253,6 +253,33 @@ QUnit.module( "behavioral detection", function( hooks )
         ] );
     } );
 
+    QUnit.test( "apostrophes inside a block comment do not stop it from being detected", function( assert )
+    {
+        var results = detection.scanText( createUri( "/tmp/sample.js" ), [
+            "/* TODO fix the user's name */",
+            "var x = 1;"
+        ].join( "\n" ) );
+
+        assert.equal( results.length, 1 );
+        assert.equal( results[ 0 ].actualTag, "TODO" );
+        assert.equal( results[ 0 ].displayText, "fix the user's name" );
+    } );
+
+    QUnit.test( "a quote inside a line comment does not hide a later block-comment todo", function( assert )
+    {
+        var results = detection.scanText( createUri( "/tmp/sample.js" ), [
+            "var x = 1; // don't worry about this",
+            "/* TODO still detected */"
+        ].join( "\n" ) );
+
+        assert.deepEqual( results.map( function( result )
+        {
+            return { line: result.line, tag: result.actualTag, text: result.displayText };
+        } ), [
+            { line: 2, tag: "TODO", text: "still detected" }
+        ] );
+    } );
+
     QUnit.test( "issue #812 inline block comments stop at the closing delimiter and ignore NOT-TODO controls", function( assert )
     {
         var text = [

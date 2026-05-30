@@ -359,7 +359,7 @@ function findTokenStart( text, startPattern, cursor )
     return undefined;
 }
 
-function skipQuotedString( text, startIndex )
+function skipString( text, startIndex )
 {
     var quote = text[ startIndex ];
     var index = startIndex + 1;
@@ -383,94 +383,160 @@ function skipQuotedString( text, startIndex )
     return text.length;
 }
 
-function findPlainTokenOutsideQuotes( text, token, cursor )
+function skipToLineEnd( text, startIndex )
 {
-    var searchStart = Math.max( cursor || 0, 0 );
-
-    while( searchStart < text.length )
-    {
-        var tokenIndex = text.indexOf( token, searchStart );
-
-        if( tokenIndex === -1 )
-        {
-            return -1;
-        }
-
-        var quotedIndex = -1;
-
-        for( var index = searchStart; index < tokenIndex; index++ )
-        {
-            if( text[ index ] === '"' || text[ index ] === '\'' || text[ index ] === '`' )
-            {
-                quotedIndex = index;
-                break;
-            }
-        }
-
-        if( quotedIndex === -1 )
-        {
-            return tokenIndex;
-        }
-
-        searchStart = skipQuotedString( text, quotedIndex );
-    }
-
-    return -1;
+    var newlineIndex = text.indexOf( '\n', startIndex );
+    return newlineIndex === -1 ? text.length : newlineIndex + 1;
 }
 
-function isOffsetInsideQuotedString( text, offset )
+function matchLineCommentToken( text, index, tokens )
 {
-    var index = 0;
-
-    while( index < text.length && index < offset )
+    for( var i = 0; i < tokens.length; i++ )
     {
-        if( text[ index ] === '"' || text[ index ] === '\'' || text[ index ] === '`' )
+        if( text.startsWith( tokens[ i ], index ) )
         {
-            var endIndex = skipQuotedString( text, index );
+            return tokens[ i ];
+        }
+    }
 
-            if( offset < endIndex )
+    return undefined;
+}
+
+function matchBlockStart( matchers, index )
+{
+    var best;
+
+    for( var i = 0; i < matchers.length; i++ )
+    {
+        var length = matchers[ i ].matchAt( index );
+        if( length !== undefined && ( best === undefined || length > best.length ) )
+        {
+            best = { length: length, end: matchers[ i ].end };
+        }
+    }
+
+    return best;
+}
+
+function buildBlockStartMatchers( entries, text )
+{
+    return entries.map( function( entry )
+    {
+        if( !entry || entry.start === undefined || typeof entry.end !== 'string' || entry.end.length === 0 )
+        {
+            return undefined;
+        }
+
+        if( typeof entry.start === 'string' )
+        {
+            if( entry.start.length === 0 )
             {
-                return true;
+                return undefined;
             }
 
-            index = endIndex;
+            var startToken = entry.start;
+            return {
+                end: entry.end,
+                matchAt: function( index )
+                {
+                    return text.startsWith( startToken, index ) ? startToken.length : undefined;
+                }
+            };
+        }
+
+        // Regex start tokens: precompute anchored match lengths once so the
+        // single scan below stays linear instead of re-running the regex.
+        var lengthsByOffset = new Map();
+        var regex = toGlobalRegex( entry.start );
+        var match;
+        regex.lastIndex = 0;
+        while( ( match = regex.exec( text ) ) !== null )
+        {
+            if( match[ 0 ].length > 0 )
+            {
+                lengthsByOffset.set( match.index, match[ 0 ].length );
+            }
+            if( regex.lastIndex === match.index )
+            {
+                regex.lastIndex++;
+            }
+        }
+
+        return {
+            end: entry.end,
+            matchAt: function( index )
+            {
+                return lengthsByOffset.has( index ) ? lengthsByOffset.get( index ) : undefined;
+            }
+        };
+    } ).filter( function( matcher ) { return matcher !== undefined; } );
+}
+
+// Single linear pass that classifies the text into code, string literals,
+// line comments and block comments. Block-comment start/end tokens are only
+// recognised while in code, and string quotes are only honoured in code, so
+// quote characters inside comments (e.g. apostrophes) and comment delimiters
+// inside string literals (e.g. a "/**/*" glob) are correctly ignored.
+function scanCommentRegions( text, pattern )
+{
+    var result = { blocks: [], openBlockStartOffset: undefined };
+
+    var blockMatchers = Array.isArray( pattern.multiLineComment ) ?
+        buildBlockStartMatchers( pattern.multiLineComment, text ) : [];
+
+    if( blockMatchers.length === 0 )
+    {
+        return result;
+    }
+
+    var lineCommentTokens = Array.isArray( pattern.singleLineComment ) ?
+        pattern.singleLineComment
+            .map( function( entry ) { return entry && typeof entry.start === 'string' ? entry.start : undefined; } )
+            .filter( function( token ) { return token !== undefined && token.length > 0; } ) :
+        [];
+
+    var index = 0;
+    var length = text.length;
+
+    while( index < length )
+    {
+        // Block comments are checked first so a start token that shares a
+        // prefix with another construct wins: Python's "\"\"\"" block over a
+        // plain "\"" string, or Lua's "--[[" block over its "--" line comment.
+        var blockMatch = matchBlockStart( blockMatchers, index );
+        if( blockMatch !== undefined )
+        {
+            var contentStart = index + blockMatch.length;
+            var endIndex = text.indexOf( blockMatch.end, contentStart );
+            if( endIndex === -1 )
+            {
+                result.openBlockStartOffset = index;
+                break;
+            }
+
+            result.blocks.push( { startOffset: index, endOffset: endIndex + blockMatch.end.length } );
+            index = endIndex + blockMatch.end.length;
+            continue;
+        }
+
+        var character = text[ index ];
+
+        if( character === '"' || character === '\'' || character === '`' )
+        {
+            index = skipString( text, index );
+            continue;
+        }
+
+        if( matchLineCommentToken( text, index, lineCommentTokens ) !== undefined )
+        {
+            index = skipToLineEnd( text, index );
             continue;
         }
 
         index++;
     }
 
-    return false;
-}
-
-function findTokenStartOutsideQuotes( text, startPattern, cursor )
-{
-    if( typeof ( startPattern ) === 'string' )
-    {
-        var startIndex = findPlainTokenOutsideQuotes( text, startPattern, cursor );
-        return startIndex === -1 ? undefined : { index: startIndex, length: startPattern.length };
-    }
-
-    var searchCursor = Math.max( cursor || 0, 0 );
-
-    while( searchCursor < text.length )
-    {
-        var match = findTokenStart( text, startPattern, searchCursor );
-
-        if( match === undefined )
-        {
-            return undefined;
-        }
-
-        if( isOffsetInsideQuotedString( text, match.index ) !== true )
-        {
-            return match;
-        }
-
-        searchCursor = match.index + Math.max( match.length, 1 );
-    }
-
-    return undefined;
+    return result;
 }
 
 function getLineBoundsForOffset( text, lineOffsets, offset )
@@ -724,43 +790,15 @@ function scanMultiLineCommentBlocks( text, pattern )
         return [];
     }
 
-    var seen = new Set();
-    var blocks = [];
-
-    pattern.multiLineComment.forEach( function( entry )
+    var blocks = scanCommentRegions( text, pattern ).blocks.map( function( region )
     {
-        var cursor = 0;
-        while( cursor < text.length )
-        {
-            var start = findTokenStartOutsideQuotes( text, entry.start, cursor );
-            if( start === undefined )
-            {
-                break;
+        return {
+            startOffset: region.startOffset,
+            wholeCommentText: text.slice( region.startOffset, region.endOffset ),
+            variant: {
+                type: 'multiline'
             }
-
-            var endIndex = findPlainTokenOutsideQuotes( text, entry.end, start.index + start.length );
-            if( endIndex === -1 )
-            {
-                break;
-            }
-
-            var blockStart = start.index;
-            var blockEnd = endIndex + entry.end.length;
-            var key = blockStart + ":" + blockEnd;
-            if( seen.has( key ) !== true )
-            {
-                seen.add( key );
-                blocks.push( {
-                    startOffset: blockStart,
-                    wholeCommentText: text.slice( blockStart, blockEnd ),
-                    variant: {
-                        type: 'multiline'
-                    }
-                } );
-            }
-
-            cursor = blockEnd;
-        }
+        };
     } );
 
     blocks.sort( function( a, b ) { return a.startOffset - b.startOffset; } );
@@ -1440,42 +1478,7 @@ function findTrailingUnclosedMultiLineCommentStart( text, pattern )
         return undefined;
     }
 
-    var openStartOffset;
-
-    pattern.multiLineComment.forEach( function( entry )
-    {
-        if( !entry || entry.start === undefined || typeof entry.end !== 'string' || entry.end.length === 0 )
-        {
-            return;
-        }
-
-        var cursor = 0;
-
-        while( cursor < text.length )
-        {
-            var start = findTokenStartOutsideQuotes( text, entry.start, cursor );
-
-            if( start === undefined )
-            {
-                return;
-            }
-
-            var endIndex = findPlainTokenOutsideQuotes( text, entry.end, start.index + start.length );
-
-            if( endIndex === -1 )
-            {
-                if( openStartOffset === undefined || start.index < openStartOffset )
-                {
-                    openStartOffset = start.index;
-                }
-                return;
-            }
-
-            cursor = endIndex + entry.end.length;
-        }
-    } );
-
-    return openStartOffset;
+    return scanCommentRegions( text, pattern ).openBlockStartOffset;
 }
 
 function resolveStreamingRetainOffset( context, results )
