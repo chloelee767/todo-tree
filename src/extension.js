@@ -2547,6 +2547,7 @@ function activate( context )
             { suffix: 'show-expand-button', value: showExpandButton },
             { suffix: 'show-export-button', value: showExportButton },
             { suffix: 'show-toggle-new-todos-only-button', value: showToggleNewTodosOnlyButton },
+            { suffix: 'new-todos-only', value: context.workspaceState.get( 'newTodosOnly', false ) },
             { suffix: 'expanded', value: config.shouldExpand() },
             { suffix: 'flat', value: isFlat },
             { suffix: 'tags-only', value: isTagsOnly },
@@ -3652,7 +3653,7 @@ function activate( context )
             } );
         }
 
-        registerCommandPair( 'toggleNewTodosOnly', function()
+        function doToggleNewTodosOnly()
         {
             var current = config.shouldShowNewTodosOnly();
             var turningOn = !current;
@@ -3677,7 +3678,10 @@ function activate( context )
 
             newTodoFilter.setEnabled( turningOn );
             context.workspaceState.update( 'newTodosOnly', turningOn ).then( rebuild );
-        } );
+        }
+
+        registerCommandPair( 'toggleNewTodosOnly', doToggleNewTodosOnly );
+        registerCommandPair( 'toggleNewTodosOnlyActive', doToggleNewTodosOnly );
 
         registerCommandPair( 'newTodosChangeBranch', function()
         {

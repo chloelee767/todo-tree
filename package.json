@@ -177,7 +177,12 @@
                 },
                 {
                     "command": "better-todo-tree.toggleNewTodosOnly",
-                    "when": "view == todo-tree-view && better-todo-tree-show-toggle-new-todos-only-button",
+                    "when": "view == todo-tree-view && better-todo-tree-show-toggle-new-todos-only-button && better-todo-tree-new-todos-only == false",
+                    "group": "navigation@10"
+                },
+                {
+                    "command": "better-todo-tree.toggleNewTodosOnlyActive",
+                    "when": "view == todo-tree-view && better-todo-tree-show-toggle-new-todos-only-button && better-todo-tree-new-todos-only == true",
                     "group": "navigation@10"
                 }
             ],
@@ -564,7 +569,13 @@
                 "command": "better-todo-tree.toggleNewTodosOnly",
                 "title": "%better-todo-tree.command.toggleNewTodosOnly.title%",
                 "category": "%better-todo-tree.command.category%",
-                "icon": "$(git-pull-request)"
+                "icon": "$(git-commit)"
+            },
+            {
+                "command": "better-todo-tree.toggleNewTodosOnlyActive",
+                "title": "%better-todo-tree.command.toggleNewTodosOnly.title%",
+                "category": "%better-todo-tree.command.category%",
+                "icon": "$(git-branch)"
             },
             {
                 "command": "better-todo-tree.newTodosChangeBranch",
