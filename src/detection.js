@@ -359,6 +359,120 @@ function findTokenStart( text, startPattern, cursor )
     return undefined;
 }
 
+function skipQuotedString( text, startIndex )
+{
+    var quote = text[ startIndex ];
+    var index = startIndex + 1;
+
+    while( index < text.length )
+    {
+        if( text[ index ] === '\\' )
+        {
+            index += 2;
+            continue;
+        }
+
+        if( text[ index ] === quote )
+        {
+            return index + 1;
+        }
+
+        index++;
+    }
+
+    return text.length;
+}
+
+function findPlainTokenOutsideQuotes( text, token, cursor )
+{
+    var searchStart = Math.max( cursor || 0, 0 );
+
+    while( searchStart < text.length )
+    {
+        var tokenIndex = text.indexOf( token, searchStart );
+
+        if( tokenIndex === -1 )
+        {
+            return -1;
+        }
+
+        var quotedIndex = -1;
+
+        for( var index = searchStart; index < tokenIndex; index++ )
+        {
+            if( text[ index ] === '"' || text[ index ] === '\'' || text[ index ] === '`' )
+            {
+                quotedIndex = index;
+                break;
+            }
+        }
+
+        if( quotedIndex === -1 )
+        {
+            return tokenIndex;
+        }
+
+        searchStart = skipQuotedString( text, quotedIndex );
+    }
+
+    return -1;
+}
+
+function isOffsetInsideQuotedString( text, offset )
+{
+    var index = 0;
+
+    while( index < text.length && index < offset )
+    {
+        if( text[ index ] === '"' || text[ index ] === '\'' || text[ index ] === '`' )
+        {
+            var endIndex = skipQuotedString( text, index );
+
+            if( offset < endIndex )
+            {
+                return true;
+            }
+
+            index = endIndex;
+            continue;
+        }
+
+        index++;
+    }
+
+    return false;
+}
+
+function findTokenStartOutsideQuotes( text, startPattern, cursor )
+{
+    if( typeof ( startPattern ) === 'string' )
+    {
+        var startIndex = findPlainTokenOutsideQuotes( text, startPattern, cursor );
+        return startIndex === -1 ? undefined : { index: startIndex, length: startPattern.length };
+    }
+
+    var searchCursor = Math.max( cursor || 0, 0 );
+
+    while( searchCursor < text.length )
+    {
+        var match = findTokenStart( text, startPattern, searchCursor );
+
+        if( match === undefined )
+        {
+            return undefined;
+        }
+
+        if( isOffsetInsideQuotedString( text, match.index ) !== true )
+        {
+            return match;
+        }
+
+        searchCursor = match.index + Math.max( match.length, 1 );
+    }
+
+    return undefined;
+}
+
 function getLineBoundsForOffset( text, lineOffsets, offset )
 {
     var boundedOffset = offset;
@@ -618,13 +732,13 @@ function scanMultiLineCommentBlocks( text, pattern )
         var cursor = 0;
         while( cursor < text.length )
         {
-            var start = findTokenStart( text, entry.start, cursor );
+            var start = findTokenStartOutsideQuotes( text, entry.start, cursor );
             if( start === undefined )
             {
                 break;
             }
 
-            var endIndex = text.indexOf( entry.end, start.index + start.length );
+            var endIndex = findPlainTokenOutsideQuotes( text, entry.end, start.index + start.length );
             if( endIndex === -1 )
             {
                 break;
@@ -1339,14 +1453,14 @@ function findTrailingUnclosedMultiLineCommentStart( text, pattern )
 
         while( cursor < text.length )
         {
-            var start = findTokenStart( text, entry.start, cursor );
+            var start = findTokenStartOutsideQuotes( text, entry.start, cursor );
 
             if( start === undefined )
             {
                 return;
             }
 
-            var endIndex = text.indexOf( entry.end, start.index + start.length );
+            var endIndex = findPlainTokenOutsideQuotes( text, entry.end, start.index + start.length );
 
             if( endIndex === -1 )
             {

@@ -231,6 +231,28 @@ QUnit.module( "behavioral detection", function( hooks )
         assert.deepEqual( results[ 0 ].continuationText, [ "keep multiline detail" ] );
     } );
 
+    QUnit.test( "javascript string literals containing block-comment tokens do not hide later line-comment todos", function( assert )
+    {
+        var results = detection.scanText( createUri( "/tmp/sample.js" ), [
+            "var includeGlob = \"/**/*\";",
+            "// TODO first visible todo",
+            "var watcher = \"**/.git/HEAD\";",
+            "// TODO second visible todo"
+        ].join( "\n" ) );
+
+        assert.deepEqual( results.map( function( result )
+        {
+            return {
+                line: result.line,
+                tag: result.actualTag,
+                text: result.displayText
+            };
+        } ), [
+            { line: 2, tag: "TODO", text: "first visible todo" },
+            { line: 4, tag: "TODO", text: "second visible todo" }
+        ] );
+    } );
+
     QUnit.test( "issue #812 inline block comments stop at the closing delimiter and ignore NOT-TODO controls", function( assert )
     {
         var text = [
