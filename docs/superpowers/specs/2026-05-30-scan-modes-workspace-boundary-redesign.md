@@ -235,7 +235,7 @@ that distinction, so `newTodoFilter` gains a notion of **covered roots**.
   stored canonicalized/normalized.
 - `failedRoots: string[]` : roots whose `findRepoRoot` succeeded but whose diff
   **failed** (e.g. base branch missing). Distinct from "no repo at all". Drives
-  the per-reason tooltip.
+  the per-reason split in the file decoration and status node.
 - `showUndiffableFiles: boolean` : mirrors the setting, default `true`
   (fail-open).
 
@@ -486,45 +486,50 @@ like other status state. No new node *type*.
 ## Per-item visual layer
 
 One per-file signal, surfaced on **every shown node for that file** when the file
-is undiffable under fail-open. File/path nodes and todo nodes use different UI
-hooks, but the user-visible meaning is the same: "this file is shown without
-new-todo filtering".
+is undiffable under fail-open. The user-visible meaning is the same on every node:
+"this file is shown without new-todo filtering". Both node kinds are **dimmed
+only** : no per-node reason tooltip (see "Why no reason tooltip on todo nodes").
 
-- **File/path nodes:** use a single **`FileDecorationProvider`** registered in
-  `activate` and disposed via `context.subscriptions`. It composes with the
-  existing `showBadges` `resourceUri` delegation (VS Code merges decorations).
-  The extension calls the provider's `onDidChangeFileDecorations` emitter after
-  each rebuild / lazy-extend so decorations refresh.
-- **Todo nodes:** apply the same dimmed visual treatment directly in
-  `tree.js getTreeItem`, because todo nodes are not resource-backed file nodes and
-  therefore do not participate in `FileDecorationProvider`.
+Both node kinds dim through the **same** mechanism: a single
+**`FileDecorationProvider`** keyed on `resourceUri`. File/path nodes already carry
+`resourceUri`; todo nodes also set `resourceUri` (their file's URI) so the provider
+dims them too.
+
+- **`FileDecorationProvider`:** registered in `activate`, disposed via
+  `context.subscriptions`. It composes with the existing `showBadges` `resourceUri`
+  delegation (VS Code merges decorations). The extension calls the provider's
+  `onDidChangeFileDecorations` emitter after each rebuild / lazy-extend so
+  decorations refresh. The decoration carries **colour only** (no badge), so a
+  todo node and its parent file node both dimming is the intended "every shown node
+  dimmed" effect, not a conflicting double-badge.
 
 The visual treatment consults `newTodoFilter` (active only when the filter is ON):
 
 1. **Undiffable files shown under fail-open** (`showUndiffableFiles === true` and
    `classifyUndiffable(fsPath) !== null`): apply the **dimmed theme colour**
    `new vscode.ThemeColor('gitDecoration.ignoredResourceForeground')` to all shown
-   nodes for that file.
-   - For file/path nodes, this is the `FileDecoration.color`.
-   - For todo nodes, use the nearest equivalent TreeItem styling hook so the todo
-     item is visually dimmed as well.
+   nodes for that file, via `FileDecoration.color` keyed on each node's
+   `resourceUri`.
    When `showUndiffableFiles` is `false` the file's nodes aren't shown at all, so
    no dimming applies.
 
-**Reason tooltip (per shown node).** The full hover explanation lives on
-`treeItem.tooltip`. When the filter is ON and the node belongs to an undiffable
-file shown under fail-open, replace the tooltip with a reason-aware
-`MarkdownString`. (Only shown nodes have tooltips; hidden files have no node, so
-their explanation lives in the combined status node.)
-- **no-repo:** "Not in a git repository : new-todo filtering can't be applied.
-  Showing all todos."
-- **diff-failed:** "git diff failed (repo may not have base branch
-  `<baseBranch>`). Showing all todos."
-- For **file/path nodes**, follow the reason line with the **fsPath** (as today).
-- For **todo nodes**, prepend the reason line and then keep the node's existing
-  tooltip content (full todo text / formatted todo tooltip), so the user still
-  gets the todo-specific hover information.
-Otherwise tooltips fall back to their existing behavior unchanged.
+### Why no reason tooltip on todo nodes
+
+The dim alone signals "shown without filtering". A per-todo reason tooltip would
+make the tree noisy (a hover on every shown todo in every undiffable file), and it
+is unnecessary : a user who wants to know *which files* are undiffable can switch
+to the file-based tree view, where the file/path nodes carry the `FileDecoration`
+(and its tooltip). So:
+
+- **Todo nodes:** keep their existing tooltip behavior unchanged (full todo text /
+  formatted todo tooltip). Do **not** prepend or replace it with an undiffable
+  reason.
+- **File/path nodes:** the per-reason explanation rides on the `FileDecoration`
+  (the `FileDecorationProvider` supplies the reason-aware `tooltip`), so the reason
+  is discoverable there without a separate `treeItem.tooltip` override.
+- The **combined status node** remains the single place the diffability reasons are
+  spelled out in full (per-reason counts), covering both hidden and shown-unfiltered
+  files.
 
 ## Settings
 
@@ -624,11 +629,11 @@ Repo convention: `test/*.behavior.test.js`.
 - **Mode-family predicate audit:** for each updated branch (`:1479`, `:1529`,
   `:1738`, `:1773`, `:1778`, `:2632`, `:3902`), a test that mode 2 takes the
   open-files branch.
-- **`FileDecorationProvider`** (unit): undiffable file -> dim colour only under
-  fail-open; diffable file (in- or out-of-workspace) -> no decoration.
-- **Todo-node dimming + tooltip** (unit): todo nodes under an undiffable fail-open
-  file are dimmed too, and their tooltip prepends the undiffable reason while
-  retaining the existing todo-specific tooltip content; normal todo nodes are
+- **`FileDecorationProvider`** (unit): undiffable file -> dim colour + reason-aware
+  tooltip under fail-open; diffable file (in- or out-of-workspace) -> no decoration.
+- **Todo-node dimming** (unit): todo nodes under an undiffable fail-open file set
+  `resourceUri` (so the `FileDecorationProvider` dims them) but their existing
+  tooltip is unchanged (no undiffable reason prepended); normal todo nodes are
   unchanged.
 - **Combined status node** (unit on the count/trigger computation):
   - trigger driven by *scanned* files : hiding the last undiffable file still

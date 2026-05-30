@@ -18,7 +18,7 @@
 | `src/newTodoFilter.js` | diffability state + `isNewTodo` predicate | Add covered/failed roots, owning-root resolution, fail-open, untracked sentinels, `extendForRepo` |
 | `src/extension.js` | scan orchestration, boundary enforcement, repo seeding/backfill, status counts, decorations | New scan-mode constant, `collectDiffRoots`, `revParseCache`, `ensureRepoForFile`, await-before-write wiring, `FileDecorationProvider` |
 | `src/config.js` | settings accessors | Add `newTodosShowUndiffableFiles`, `newTodosGitTimeoutMs` |
-| `src/tree.js` | tree rendering, status node, per-node dimming/tooltip | Combined status node, todo-node dimming + reason tooltip |
+| `src/tree.js` | tree rendering, status node, todo-node dimming | Combined status node, todo-node dimming (sets `resourceUri`; no reason tooltip) |
 | `package.json` | enum + settings + menus | New enum value, two new `filtering.*` settings, menu `when` audit, new command |
 | `package.nls.json` | labels | Five scan-mode `markdownEnumDescriptions` |
 
@@ -31,7 +31,7 @@
 1. **Tasks 1-3** build the diffability foundation in `git.js` / `newTodoFilter.js` (pure logic, no VS Code). Fully testable in isolation.
 2. **Tasks 4-6** wire diffability into `extension.js` (seed, backfill, await-before-write). This fixes the "filter broken in current-file/open-files modes" bug.
 3. **Tasks 7-9** add the boundary axis: new scan mode, enumeration enforcement, predicate audit, package.json/nls.
-4. **Tasks 10-12** add UI: config settings, combined status node, per-node dimming + tooltips.
+4. **Tasks 10-12** add UI: config settings, combined status node, per-node dimming (reason tooltip on file/path-node decorations only).
 
 Each task ends with a commit. Each is independently testable.
 
@@ -1862,17 +1862,19 @@ git commit -m "feat(tree): combined diffability status node with click-to-settin
 
 ---
 
-## Task 10: Per-item dimming + reason tooltip (todo nodes + FileDecorationProvider)
+## Task 10: Per-item dimming (todo nodes + FileDecorationProvider)
 
 **Files:**
-- Modify: `src/tree.js` (todo-node dimming + tooltip)
+- Modify: `src/tree.js` (todo-node dimming via `resourceUri`)
 - Create: `src/fileDecorationProvider.js`
 - Modify: `src/extension.js` (register provider, fire change emitter after rebuild/extend)
 - Test: `test/tree.behavior.test.js`, `test/fileDecoration.behavior.test.js`
 
-Undiffable files shown under fail-open get dimmed + a reason tooltip on every shown node. File/path nodes use a `FileDecorationProvider`; todo nodes apply the treatment directly in `getTreeItem`.
+Undiffable files shown under fail-open get dimmed on every shown node. Both node kinds dim through a single `FileDecorationProvider` keyed on `resourceUri`: file/path nodes already carry `resourceUri`; todo nodes set `resourceUri` (their file's URI) in `getTreeItem` so the provider dims them too.
 
-The visual treatment consults `newTodoFilter`: active only when filter is ON, `showUndiffableFiles === true`, and `classifyUndiffable(fsPath) !== null`. Color: `new vscode.ThemeColor('gitDecoration.ignoredResourceForeground')`.
+The reason explanation rides on the **`FileDecoration.tooltip`** (file/path-node decorations). Todo nodes get **no** reason tooltip — their existing tooltip is left unchanged. The combined status node (Task 9) remains the single place reasons are spelled out in full.
+
+The decoration consults `newTodoFilter`: active only when filter is ON, `showUndiffableFiles === true`, and `classifyUndiffable(fsPath) !== null`. Color: `new vscode.ThemeColor('gitDecoration.ignoredResourceForeground')`.
 
 ### 10a: FileDecorationProvider
 
@@ -1895,18 +1897,40 @@ function loadProvider( filterStub )
     } );
 }
 
+function makeConfig()
+{
+    return {
+        newTodosShowUndiffableFiles: function() { return true; },
+        newTodosGitBaseBranch: function() { return 'main'; }
+    };
+}
+
 QUnit.module( 'behavioral fileDecorationProvider' );
 
-QUnit.test( 'undiffable fail-open file -> dimmed decoration', function( assert )
+QUnit.test( 'undiffable no-repo file -> dimmed decoration with no-repo tooltip', function( assert )
 {
     var mod = loadProvider( {
         isEnabled: function() { return true; },
         classifyUndiffable: function() { return 'no-repo'; }
     } );
-    var provider = mod.create( { newTodosShowUndiffableFiles: function() { return true; } } );
+    var provider = mod.create( makeConfig() );
     var deco = provider.provideFileDecoration( { fsPath: '/x/a.js' } );
     assert.ok( deco, 'decoration returned' );
     assert.equal( deco.color.id, 'gitDecoration.ignoredResourceForeground' );
+    assert.ok( /not in a git repository/i.test( deco.tooltip ), 'no-repo reason in tooltip' );
+} );
+
+QUnit.test( 'undiffable diff-failed file -> tooltip names base branch', function( assert )
+{
+    var mod = loadProvider( {
+        isEnabled: function() { return true; },
+        classifyUndiffable: function() { return 'diff-failed'; }
+    } );
+    var provider = mod.create( makeConfig() );
+    var deco = provider.provideFileDecoration( { fsPath: '/x/a.js' } );
+    assert.ok( deco, 'decoration returned' );
+    assert.ok( /diff failed/i.test( deco.tooltip ), 'diff-failed reason in tooltip' );
+    assert.ok( /main/.test( deco.tooltip ), 'base branch named in tooltip' );
 } );
 
 QUnit.test( 'diffable file -> no decoration', function( assert )
@@ -1915,7 +1939,7 @@ QUnit.test( 'diffable file -> no decoration', function( assert )
         isEnabled: function() { return true; },
         classifyUndiffable: function() { return null; }
     } );
-    var provider = mod.create( { newTodosShowUndiffableFiles: function() { return true; } } );
+    var provider = mod.create( makeConfig() );
     assert.equal( provider.provideFileDecoration( { fsPath: '/x/a.js' } ), undefined );
 } );
 
@@ -1925,7 +1949,7 @@ QUnit.test( 'filter off -> no decoration', function( assert )
         isEnabled: function() { return false; },
         classifyUndiffable: function() { return 'no-repo'; }
     } );
-    var provider = mod.create( { newTodosShowUndiffableFiles: function() { return true; } } );
+    var provider = mod.create( makeConfig() );
     assert.equal( provider.provideFileDecoration( { fsPath: '/x/a.js' } ), undefined );
 } );
 ```
@@ -1940,6 +1964,15 @@ Expected: FAIL ("Cannot find module '../src/fileDecorationProvider.js'").
 ```javascript
 var vscode = require( 'vscode' );
 var newTodoFilter = require( './newTodoFilter.js' );
+
+function reasonTooltip( reason, baseBranch )
+{
+    if( reason === 'no-repo' )
+    {
+        return "Not in a git repository : new-todo filtering can't be applied. Showing all todos.";
+    }
+    return "git diff failed (repo may not have base branch `" + baseBranch + "`). Showing all todos.";
+}
 
 function create( config )
 {
@@ -1958,7 +1991,7 @@ function create( config )
         }
         return new vscode.FileDecoration(
             undefined,
-            undefined,
+            reasonTooltip( reason, config.newTodosGitBaseBranch() ),
             new vscode.ThemeColor( 'gitDecoration.ignoredResourceForeground' )
         );
     }
@@ -1993,7 +2026,7 @@ After each rebuild swap (end of `executeRebuild` success `.then`, after `setNewT
 fileDecorationProvider.refresh();
 ```
 
-> Confirm `config` exposes `newTodosShowUndiffableFiles` (added in Task 4) — it does. The provider requires `./newTodoFilter.js` directly (singleton module), so it sees the live state.
+> Confirm `config` exposes `newTodosShowUndiffableFiles` (added in Task 4) and `newTodosGitBaseBranch` (pre-existing) — it does. The provider requires `./newTodoFilter.js` directly (singleton module), so it sees the live state.
 
 - [ ] **Step 6: Commit**
 
@@ -2002,34 +2035,44 @@ git add src/fileDecorationProvider.js src/extension.js test/fileDecoration.behav
 git commit -m "feat(tree): FileDecorationProvider dims undiffable fail-open file nodes"
 ```
 
-### 10b: Todo-node dimming + reason tooltip
+### 10b: Todo-node dimming (resourceUri only)
 
 - [ ] **Step 1: Write the failing test**
 
-Add to `test/tree.behavior.test.js`. The harness must let the provider see filter state; stub `newTodoFilter` if the provider imports it, or inject via the existing test setup. Assert that a todo node under an undiffable fail-open file gets the dimmed color and a tooltip that prepends the reason and retains existing todo tooltip content.
+Add to `test/tree.behavior.test.js`. The harness must let the provider see filter state; stub `newTodoFilter` if the provider imports it, or inject via the existing test setup. Assert that a todo node under an undiffable fail-open file sets `resourceUri` to its file's URI (so the `FileDecorationProvider` dims it) and that its existing tooltip is left **unchanged** (no undiffable reason prepended).
 
 ```javascript
-QUnit.test( 'todo node under undiffable fail-open file is dimmed and tooltip prepends reason', function( assert )
+QUnit.test( 'todo node under undiffable fail-open file sets resourceUri, tooltip unchanged', function( assert )
 {
     // Arrange a provider whose newTodoFilter reports the file undiffable + fail-open.
     // (Use the file's existing mechanism for injecting newTodoFilter / config.)
     var provider = makeProviderWithUndiffable( '/x/a.js', 'no-repo', true /*failOpen*/ );
     var todoNode = makeTodoNode( { fsPath: '/x/a.js', line: 3, label: 'TODO: thing' } );
     var item = provider.getTreeItem( todoNode );
-    assert.ok( item.tooltip, 'has tooltip' );
-    var tip = item.tooltip.value !== undefined ? item.tooltip.value : item.tooltip;
-    assert.ok( /git repository/i.test( tip ), 'reason prepended' );
+    assert.ok( item.resourceUri, 'resourceUri set so FileDecorationProvider can dim the row' );
+    assert.equal( item.resourceUri.fsPath, '/x/a.js', 'resourceUri is the file URI' );
+    // No undiffable reason text injected into the todo tooltip.
+    var tip = item.tooltip === undefined ? '' : ( item.tooltip.value !== undefined ? item.tooltip.value : String( item.tooltip ) );
+    assert.notOk( /git repository/i.test( tip ), 'no undiffable reason prepended to todo tooltip' );
+} );
+
+QUnit.test( 'diffable todo node: no resourceUri injected by undiffable path', function( assert )
+{
+    var provider = makeProviderWithUndiffable( '/x/a.js', null /*diffable*/, true );
+    var todoNode = makeTodoNode( { fsPath: '/x/a.js', line: 3, label: 'TODO: thing' } );
+    var item = provider.getTreeItem( todoNode );
+    assert.notOk( item.resourceUri, 'no resourceUri added for a diffable todo node' );
 } );
 ```
 
-> Adapt `makeProviderWithUndiffable` / `makeTodoNode` to the real harness in `tree.behavior.test.js`. If the provider reads `newTodoFilter` via `require`, stub it with `helpers.loadWithStubs` when loading `tree.js`. Inspect how the existing tree tests construct todo nodes and reuse those builders.
+> Adapt `makeProviderWithUndiffable` / `makeTodoNode` to the real harness in `tree.behavior.test.js`. If the provider reads `newTodoFilter` via `require`, stub it with `helpers.loadWithStubs` when loading `tree.js`. Inspect how the existing tree tests construct todo nodes and reuse those builders. (If todo nodes already set `resourceUri` for another reason, assert it is the file URI rather than asserting it was newly added.)
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx qunit test/tree.behavior.test.js`
-Expected: FAIL (no dimming/tooltip applied to todo nodes).
+Expected: FAIL (no `resourceUri` set on todo nodes by the undiffable path).
 
-- [ ] **Step 3: Apply dimming + tooltip to todo nodes in `getTreeItem`**
+- [ ] **Step 3: Set `resourceUri` on undiffable-fail-open todo nodes in `getTreeItem`**
 
 In the todo-node branch of `getTreeItem` (lines 679-718), after the existing command setup, add:
 
@@ -2039,26 +2082,18 @@ if( newTodoFilter.isEnabled() === true && config.newTodosShowUndiffableFiles() =
     var reason = newTodoFilter.classifyUndiffable( node.fsPath );
     if( reason !== null && reason !== undefined )
     {
+        // resourceUri lets the single FileDecorationProvider dim this row by the
+        // file's URI (same colour the parent file node gets). No reason tooltip on
+        // todo nodes -- the reason rides on the file/path-node FileDecoration; the
+        // existing todo tooltip is left untouched.
         treeItem.resourceUri = vscode.Uri.file( node.fsPath );
-        // resourceUri lets the FileDecorationProvider dim the row; also set explicit tooltip reason.
-        var reasonText = reason === 'no-repo'
-            ? "Not in a git repository : new-todo filtering can't be applied. Showing all todos."
-            : "git diff failed (repo may not have base branch `" + config.newTodosGitBaseBranch() + "`). Showing all todos.";
-        var existingTip = treeItem.tooltip;
-        var md = new vscode.MarkdownString();
-        md.appendMarkdown( reasonText + "\n\n" );
-        if( existingTip !== undefined )
-        {
-            md.appendMarkdown( existingTip.value !== undefined ? existingTip.value : String( existingTip ) );
-        }
-        treeItem.tooltip = md;
     }
 }
 ```
 
 > Verify `tree.js` requires `newTodoFilter` and `config` at the top; add `var newTodoFilter = require( './newTodoFilter.js' );` if absent (the explore did not list it as imported — check and add). `config` is already used in `tree.js`.
 
-> Setting `resourceUri` on a todo node may interfere with badges; the spec says todo nodes are not resource-backed file nodes. If `resourceUri` causes unwanted badge behavior, instead apply the dim via the available TreeItem styling hook (there is no direct foreground-color API for TreeItem labels in stable VS Code; the practical dim hook IS `resourceUri` + FileDecorationProvider, OR a themed icon). Prefer `resourceUri` + FileDecorationProvider for consistent dimming, accepting it as the styling hook. Keep the explicit tooltip regardless.
+> **Dimming hook:** stable VS Code TreeItem has no label-foreground API; `resourceUri` + `FileDecorationProvider` is the dim mechanism, and it is shared by both node kinds. The `FileDecoration` carries colour only (no badge), so the todo node and its parent file node both dimming is the intended "every shown node dimmed" effect, not a conflicting double-badge. Do **not** add a reason tooltip here (that lives on the file/path-node decoration and the status node) — only set `resourceUri`.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -2074,7 +2109,7 @@ Expected: Build succeeds.
 
 ```bash
 git add src/tree.js test/tree.behavior.test.js
-git commit -m "feat(tree): dim undiffable fail-open todo nodes and prepend reason tooltip"
+git commit -m "feat(tree): dim undiffable fail-open todo nodes via resourceUri (no reason tooltip)"
 ```
 
 ---
