@@ -113,6 +113,79 @@ QUnit.test( 'toggle new todos only button defaults to enabled', function( assert
     assert.strictEqual( buttonSetting.default, true );
 } );
 
+QUnit.test( 'new filtering settings are declared under better-todo-tree only', function( assert )
+{
+    var packageJson = readPackageJson();
+    var englishNls = readPackageNls( 'package.nls.json' );
+    var chineseNls = readPackageNls( 'package.nls.zh-cn.json' );
+    var showUndiffableSetting = getConfigurationProperty( 'better-todo-tree.filtering.newTodosShowUndiffableFiles' );
+    var timeoutSetting = getConfigurationProperty( 'better-todo-tree.filtering.newTodosGitTimeoutMs' );
+
+    function hasConfigurationProperty( propertyName, node )
+    {
+        if( node === undefined || node === null )
+        {
+            return false;
+        }
+
+        if( Array.isArray( node ) )
+        {
+            return node.some( function( entry )
+            {
+                return hasConfigurationProperty( propertyName, entry );
+            } );
+        }
+
+        if( typeof ( node ) !== 'object' )
+        {
+            return false;
+        }
+
+        if( node.properties && Object.prototype.hasOwnProperty.call( node.properties, propertyName ) )
+        {
+            return true;
+        }
+
+        return Object.keys( node ).some( function( key )
+        {
+            return hasConfigurationProperty( propertyName, node[ key ] );
+        } );
+    }
+
+    assert.ok( showUndiffableSetting, 'undiffable setting present' );
+    assert.strictEqual( showUndiffableSetting.default, true );
+    assert.equal( showUndiffableSetting.markdownDescription, '%newTodosShowUndiffableFiles.description%' );
+    assert.ok( timeoutSetting, 'timeout setting present' );
+    assert.strictEqual( timeoutSetting.default, 2000 );
+    assert.strictEqual( timeoutSetting.minimum, 0 );
+    assert.strictEqual( timeoutSetting.multipleOf, 1 );
+    assert.equal( timeoutSetting.markdownDescription, '%newTodosGitTimeoutMs.description%' );
+    assert.notOk( hasConfigurationProperty( 'todo-tree.filtering.newTodosShowUndiffableFiles', packageJson.contributes.configuration ), 'no legacy alias for undiffable setting' );
+    assert.notOk( hasConfigurationProperty( 'todo-tree.filtering.newTodosGitTimeoutMs', packageJson.contributes.configuration ), 'no legacy alias for timeout setting' );
+    assert.equal( englishNls[ 'newTodosShowUndiffableFiles.description' ], "When 'new todos only' is enabled and a file can't be git-diffed (not in a repo, or the diff failed), show all its todos (fail-open). When disabled, hide such files entirely (fail-closed)." );
+    assert.equal( englishNls[ 'newTodosGitTimeoutMs.description' ], 'Maximum time (ms) to wait for first-touch git repo discovery + diff when filtering an open file. On timeout, the file is shown in its fail-open/fail-closed state, then corrected when the diff resolves. 0 disables the timeout (always wait).' );
+    assert.equal( chineseNls[ 'newTodosShowUndiffableFiles.description' ], "启用“仅显示新待办”后，如果某个文件无法执行 git diff（不在仓库中，或 diff 失败），则显示该文件中的所有待办事项（fail-open）。禁用后，则完全隐藏这类文件（fail-closed）。" );
+    assert.equal( chineseNls[ 'newTodosGitTimeoutMs.description' ], '筛选打开文件时，首次触发 git 仓库发现和 diff 的最大等待时间（毫秒）。超时后，文件会先按 fail-open 或 fail-closed 状态显示，待 diff 完成后再修正。设为 0 可禁用超时（始终等待）。' );
+} );
+
+QUnit.test( 'scan mode enums expose exactly five values including open files in workspace for current and legacy namespaces', function( assert )
+{
+    var currentScanMode = getConfigurationProperty( 'better-todo-tree.tree.scanMode' );
+    var legacyScanMode = getConfigurationProperty( 'todo-tree.tree.scanMode' );
+    var expectedModes = [
+        'workspace',
+        'open files',
+        'current file',
+        'workspace only',
+        'open files in workspace'
+    ];
+
+    assert.deepEqual( currentScanMode.enum, expectedModes );
+    assert.deepEqual( legacyScanMode.enum, expectedModes );
+    assert.equal( currentScanMode.markdownEnumDescriptions.length, 5 );
+    assert.equal( legacyScanMode.markdownEnumDescriptions.length, 5 );
+} );
+
 QUnit.test( 'context menus target stable todo-tree views with rebranded context keys', function( assert )
 {
     var packageJson = readPackageJson();
@@ -165,6 +238,58 @@ QUnit.test( 'view title busy placeholders are scoped to the active control inste
     assert.ok( groupingBusyEntry.when.indexOf( 'better-todo-tree-grouping-busy == true' ) >= 0 );
     assert.ok( groupByTagEntry.when.indexOf( 'better-todo-tree-grouping-busy == false' ) >= 0 );
     assert.ok( groupBySubTagEntry.when.indexOf( 'better-todo-tree-grouping-busy == false' ) >= 0 );
+} );
+
+QUnit.test( 'scan mode toolbar cycle includes open files in workspace and context menu exposes it', function( assert )
+{
+    var packageJson = readPackageJson();
+    var titleMenu = packageJson.contributes.menus[ 'view/title' ];
+    var contextMenu = packageJson.contributes.menus[ 'view/item/context' ];
+    var scanButtons = titleMenu.filter( function( entry )
+    {
+        return [
+            'better-todo-tree.scanOpenFilesOnly',
+            'better-todo-tree.scanOpenFilesInWorkspaceOnly',
+            'better-todo-tree.scanCurrentFileOnly',
+            'better-todo-tree.scanWorkspaceOnly',
+            'better-todo-tree.scanWorkspaceAndOpenFiles'
+        ].indexOf( entry.command ) !== -1;
+    } );
+    var mode2ContextEntry = contextMenu.find( function( entry )
+    {
+        return entry.command === 'better-todo-tree.scanOpenFilesInWorkspaceOnly';
+    } );
+
+    assert.deepEqual( scanButtons.map( function( entry )
+    {
+        return { command: entry.command, when: entry.when };
+    } ), [
+        {
+            command: 'better-todo-tree.scanOpenFilesOnly',
+            when: "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'workspace' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false"
+        },
+        {
+            command: 'better-todo-tree.scanOpenFilesInWorkspaceOnly',
+            when: "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'open files' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false"
+        },
+        {
+            command: 'better-todo-tree.scanCurrentFileOnly',
+            when: "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'open files in workspace' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false"
+        },
+        {
+            command: 'better-todo-tree.scanWorkspaceOnly',
+            when: "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'current file' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false"
+        },
+        {
+            command: 'better-todo-tree.scanWorkspaceAndOpenFiles',
+            when: "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'workspace only' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false"
+        }
+    ] );
+    assert.deepEqual( mode2ContextEntry, {
+        command: 'better-todo-tree.scanOpenFilesInWorkspaceOnly',
+        when: "view =~ /todo-tree/ && better-todo-tree-scan-mode != 'open files in workspace'",
+        group: '3-view'
+    } );
 } );
 
 QUnit.test( 'busy and composite tree commands have localization entries in both english and zh-cn bundles', function( assert )

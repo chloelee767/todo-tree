@@ -276,6 +276,7 @@ function createProviderStub()
         },
         finalizePendingChanges: function( filter, options ) { this.finalizeCalls.push( { filter: filter, options: options } ); },
         refresh: function() { this.refreshCalls++; },
+        setNewTodoStatus: function( status ) { this.newTodoStatus = status; },
         getTagCountsForActivityBar: function() { return {}; },
         getTagCountsForStatusBar: function() { return {}; },
         exportTree: function() { return {}; },
@@ -295,12 +296,14 @@ function instrumentProvider( provider )
     provider.clearCalls = 0;
     provider.rebuildCalls = 0;
     provider.finalizeCalls = [];
+    provider.newTodoStatus = undefined;
 
     var originalClear = provider.clear ? provider.clear.bind( provider ) : function() {};
     var originalRebuild = provider.rebuild ? provider.rebuild.bind( provider ) : function() {};
     var originalReplaceDocument = provider.replaceDocument ? provider.replaceDocument.bind( provider ) : function() {};
     var originalFinalizePendingChanges = provider.finalizePendingChanges ? provider.finalizePendingChanges.bind( provider ) : function() {};
     var originalRefresh = provider.refresh ? provider.refresh.bind( provider ) : function() {};
+    var originalSetNewTodoStatus = provider.setNewTodoStatus ? provider.setNewTodoStatus.bind( provider ) : function() {};
 
     provider.clear = function()
     {
@@ -329,6 +332,11 @@ function instrumentProvider( provider )
     {
         this.refreshCalls++;
         return originalRefresh.apply( this, arguments );
+    };
+    provider.setNewTodoStatus = function( status )
+    {
+        this.newTodoStatus = status;
+        return originalSetNewTodoStatus.apply( this, arguments );
     };
 
     return provider;
@@ -646,6 +654,14 @@ function createVscodeStub( options )
             {
                 return createTreeView.apply( undefined, arguments );
             },
+            registerFileDecorationProvider: function( provider )
+            {
+                if( typeof ( options.onRegisterFileDecorationProvider ) === 'function' )
+                {
+                    options.onRegisterFileDecorationProvider( provider );
+                }
+                return { dispose: function() {} };
+            },
             withProgress: function( progressOptions, task )
             {
                 return createProgressSession( progressOptions, task );
@@ -731,6 +747,14 @@ function createExtensionHarness( options )
         allCalls: 0,
         getByKeyCalls: 0
     };
+    var registeredFileDecorationProvider;
+
+    options = Object.assign( {}, options, {
+        onRegisterFileDecorationProvider: function( provider )
+        {
+            registeredFileDecorationProvider = provider;
+        }
+    } );
 
     var vscodeStub = createVscodeStub( options );
     var identityStub = helpers.loadWithStubs( '../src/extensionIdentity.js', {
@@ -874,7 +898,9 @@ function createExtensionHarness( options )
         backgroundColourScheme: function() { return []; },
         tagGroup: function() { return undefined; },
         shouldShowNewTodosOnly: function() { return false; },
-        newTodosGitBaseBranch: function() { return ''; },
+        newTodosShowUndiffableFiles: function() { return options.newTodosShowUndiffableFiles !== undefined ? options.newTodosShowUndiffableFiles : true; },
+        newTodosGitBaseBranch: function() { return options.newTodosGitBaseBranch !== undefined ? options.newTodosGitBaseBranch : ''; },
+        newTodosGitTimeoutMs: function() { return options.newTodosGitTimeoutMs !== undefined ? options.newTodosGitTimeoutMs : 0; },
         shouldPassGlobsToGitDiff: function() { return false; }
     };
     var utilsStub = {
@@ -1219,13 +1245,17 @@ function createExtensionHarness( options )
                 unlink: function() { return Promise.resolve(); }
             }
         },
-        './newTodoFilter.js': {
+        './newTodoFilter.js': Object.assign( {
             init: function() {},
             setEnabled: function() {},
             isEnabled: function() { return false; },
             isNewTodo: function() { return true; },
             refresh: function() { return Promise.resolve( { allFailed: false } ); }
-        },
+        }, options.newTodoFilterStub || {} ),
+        './git.js': Object.assign( {
+            init: function() {},
+            findRepoRoot: function() { return Promise.resolve( null ); }
+        }, options.gitStub || {} ),
         treeify: { asTree: function() { return ''; } },
         child_process: {
             execFile: function( executable, args, execOptions, callback )
@@ -1252,6 +1282,10 @@ function createExtensionHarness( options )
         normalizeWorkspaceCalls: normalizeWorkspaceCalls,
         readFileCalls: readFileCalls,
         notebookMetrics: notebookMetrics,
+        get fileDecorationProvider()
+        {
+            return registeredFileDecorationProvider;
+        },
         vscode: vscodeStub,
         windowListeners: vscodeStub.windowListeners,
         warningMessages: vscodeStub.warningMessages,
@@ -1377,6 +1411,195 @@ function fireVisibleNotebookEditorsChanged( harness, notebooksToShow, activeNote
 }
 
 QUnit.module( "extension scan parity" );
+
+QUnit.test( "new-todos filter threads scanned undiffable counts to the provider even when fail-closed hides the file", function( assert )
+{
+    var fixture = [ {
+        uri: matrixHelpers.createUri( '/workspace/src/hidden.js' ),
+        actualTag: 'TODO',
+        displayText: 'hidden item',
+        continuationText: [],
+        line: 1
+    } ];
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        ripgrepMatches: [ {
+            fsPath: 'src/hidden.js',
+            line: 1,
+            column: 1,
+            match: 'TODO hidden item'
+        } ],
+        scanTextImpl: function( uri )
+        {
+            return uri.fsPath === '/workspace/src/hidden.js' ? fixture : [];
+        },
+        fileContents: {
+            '/workspace/src/hidden.js': '// TODO hidden item'
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function( fsPath )
+            {
+                return fsPath === '/workspace/src/hidden.js' ? 'diff-failed' : null;
+            },
+            isNewTodo: function() { return false; },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); }
+        },
+        gitStub: {
+            findRepoRoot: function() { return Promise.resolve( '/workspace' ); }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.deepEqual( harness.provider.newTodoStatus, {
+            enabled: true,
+            noRepo: 0,
+            diffFailed: 1,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: ''
+        } );
+    } );
+} );
+
+QUnit.test( "new-todos filter counts hidden no-repo files separately from diff failures", function( assert )
+{
+    var hiddenFixture = [ {
+        uri: matrixHelpers.createUri( '/workspace/src/no-repo.js' ),
+        actualTag: 'TODO',
+        displayText: 'no repo item',
+        continuationText: [],
+        line: 1
+    } ];
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        ripgrepMatches: [ {
+            fsPath: 'src/no-repo.js',
+            line: 1,
+            column: 1,
+            match: 'TODO no repo item'
+        } ],
+        scanTextImpl: function( uri )
+        {
+            return uri.fsPath === '/workspace/src/no-repo.js' ? hiddenFixture : [];
+        },
+        fileContents: {
+            '/workspace/src/no-repo.js': '// TODO no repo item'
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function( fsPath )
+            {
+                return fsPath === '/workspace/src/no-repo.js' ? 'no-repo' : null;
+            },
+            isNewTodo: function() { return false; },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); }
+        },
+        gitStub: {
+            findRepoRoot: function() { return Promise.resolve( '/workspace' ); }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.deepEqual( harness.provider.newTodoStatus, {
+            enabled: true,
+            noRepo: 1,
+            diffFailed: 0,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: ''
+        } );
+    } );
+} );
+
+QUnit.test( "new-todos filter counts undiffable files once even when one file yields multiple TODOs", function( assert )
+{
+    var multiTodoFixture = [ {
+        uri: matrixHelpers.createUri( '/workspace/src/multi.js' ),
+        actualTag: 'TODO',
+        displayText: 'first item',
+        continuationText: [],
+        line: 1
+    }, {
+        uri: matrixHelpers.createUri( '/workspace/src/multi.js' ),
+        actualTag: 'TODO',
+        displayText: 'second item',
+        continuationText: [],
+        line: 2
+    } ];
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        ripgrepMatches: [ {
+            fsPath: 'src/multi.js',
+            line: 1,
+            column: 1,
+            match: 'TODO first item'
+        } ],
+        scanTextImpl: function( uri )
+        {
+            return uri.fsPath === '/workspace/src/multi.js' ? multiTodoFixture : [];
+        },
+        fileContents: {
+            '/workspace/src/multi.js': '// TODO first item\n// TODO second item'
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function( fsPath )
+            {
+                return fsPath === '/workspace/src/multi.js' ? 'diff-failed' : null;
+            },
+            isNewTodo: function() { return false; },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); }
+        },
+        gitStub: {
+            findRepoRoot: function() { return Promise.resolve( '/workspace' ); }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.deepEqual( harness.provider.newTodoStatus, {
+            enabled: true,
+            noRepo: 0,
+            diffFailed: 1,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: ''
+        } );
+    } );
+} );
 
 QUnit.test( "open-files mode stores canonical document results through the refresh pipeline", function( assert )
 {
@@ -1995,6 +2218,113 @@ QUnit.test( "issue #883 workspace-only mode scans notebooks within workspace roo
     } );
 } );
 
+QUnit.test( "open-files-in-workspace mode excludes external open text documents", function( assert )
+{
+    var workspaceDocument = matrixHelpers.createDocument( '/workspace/src/file.js', '// TODO workspace item' );
+    var externalDocument = matrixHelpers.createDocument( '/external/open.js', '// TODO external item' );
+    var fixture = [ {
+        uri: matrixHelpers.createUri( '/workspace/src/file.js' ),
+        actualTag: 'TODO',
+        displayText: 'workspace item',
+        continuationText: []
+    } ];
+    var harness = createExtensionHarness( {
+        scanMode: 'open files in workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        visibleTextEditors: [ { document: workspaceDocument }, { document: externalDocument } ],
+        documentResults: fixture,
+        fileContents: {}
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        assert.equal( harness.scanDocumentCalls.length, 1 );
+        assert.equal( harness.scanDocumentCalls[ 0 ].fileName, '/workspace/src/file.js' );
+        assert.deepEqual( harness.provider.replaceCalls.map( function( call ) { return call.uri.fsPath; } ), [ '/workspace/src/file.js' ] );
+    } );
+} );
+
+QUnit.test( "open-files mode still includes external open text documents", function( assert )
+{
+    var workspaceDocument = matrixHelpers.createDocument( '/workspace/src/file.js', '// TODO workspace item' );
+    var externalDocument = matrixHelpers.createDocument( '/external/open.js', '// TODO external item' );
+    var fixture = [ {
+        uri: matrixHelpers.createUri( '/workspace/src/file.js' ),
+        actualTag: 'TODO',
+        displayText: 'item',
+        continuationText: []
+    } ];
+    var harness = createExtensionHarness( {
+        scanMode: 'open files',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        visibleTextEditors: [ { document: workspaceDocument }, { document: externalDocument } ],
+        documentResults: fixture,
+        fileContents: {}
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        assert.equal( harness.scanDocumentCalls.length, 2 );
+        assert.deepEqual( harness.provider.replaceCalls.map( function( call ) { return call.uri.fsPath; } ), [
+            '/workspace/src/file.js',
+            '/external/open.js'
+        ] );
+    } );
+} );
+
+QUnit.test( "open-files-in-workspace mode excludes notebooks outside workspace roots", function( assert )
+{
+    var fixture = createNotebookFixture( '/external/notebook.ipynb' );
+    var harness = createExtensionHarness( {
+        scanMode: 'open files in workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        notebookDocuments: [ fixture.notebook ],
+        visibleTextEditors: [ { document: fixture.codeCell } ],
+        activeTextEditor: { document: fixture.codeCell },
+        scanDocumentImpl: fixture.scanDocumentImpl,
+        fileContents: {}
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        assert.equal( harness.scanDocumentCalls.length, 0 );
+        assert.deepEqual( harness.provider.replaceCalls, [] );
+    } );
+} );
+
+QUnit.test( "open-files-in-workspace mode keeps notebooks within workspace roots", function( assert )
+{
+    var fixture = createNotebookFixture();
+    var harness = createExtensionHarness( {
+        scanMode: 'open files in workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        notebookDocuments: [ fixture.notebook ],
+        visibleTextEditors: [ { document: fixture.codeCell } ],
+        activeTextEditor: { document: fixture.codeCell },
+        scanDocumentImpl: fixture.scanDocumentImpl,
+        fileContents: {}
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        assert.equal( harness.scanDocumentCalls.length, 2 );
+        assert.equal( findReplaceCallsForPath( harness, fixture.notebook.uri.fsPath ).length, 1 );
+        assertNotebookResults( assert, getLatestReplaceCallForPath( harness, fixture.notebook.uri.fsPath ).results, fixture );
+    } );
+} );
+
 QUnit.test( "issue #883 notebook results survive tree view and grouping commands", function( assert )
 {
     var fixture = createNotebookFixture();
@@ -2392,6 +2722,122 @@ QUnit.test( "view commands preserve streamed workspace results while a rebuild i
         assert.equal( harness.provider.latestResultsByUri.get( '/workspace/streamed.js' ).results.length, 1 );
 
         releaseSearch.resolve();
+        return matrixHelpers.flushAsyncWork();
+    } );
+} );
+
+QUnit.test( 'late reconcile refreshes file decorations even while rebuild results are still in-flight', function( assert )
+{
+    var extendDeferredA = createDeferred();
+    var extendDeferredB = createDeferred();
+    var fileDecorationRefreshes = 0;
+    var timeoutCallbacks = [];
+    var externalDocumentA = matrixHelpers.createDocument( '/external-a/late.js', '// TODO external late item' );
+    var externalDocumentB = matrixHelpers.createDocument( '/external-b/hold.js', '// TODO external hold item' );
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        newTodosGitBaseBranch: 'main',
+        newTodosGitTimeoutMs: 1,
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        visibleTextEditors: [ { document: externalDocumentA }, { document: externalDocumentB } ],
+        activeTextEditor: { document: externalDocumentA },
+        scanDocumentImpl: function( document )
+        {
+            return [ {
+                uri: document.uri,
+                actualTag: 'TODO',
+                displayText: path.basename( document.fileName ),
+                continuationText: [],
+                line: 1
+            } ];
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            isNewTodo: function() { return true; },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); },
+            isOwningRepoKnown: function() { return false; },
+            extendForRepo: function( repoRoot )
+            {
+                if( repoRoot === '/external-a' )
+                {
+                    return extendDeferredA.promise;
+                }
+                if( repoRoot === '/external-b' )
+                {
+                    return extendDeferredB.promise;
+                }
+                return Promise.resolve();
+            },
+            classifyUndiffable: function() { return 'no-repo'; }
+        },
+        gitStub: {
+            findRepoRoot: function( dir )
+            {
+                if( dir.indexOf( '/external-a' ) === 0 )
+                {
+                    return Promise.resolve( '/external-a' );
+                }
+                if( dir.indexOf( '/external-b' ) === 0 )
+                {
+                    return Promise.resolve( '/external-b' );
+                }
+                return Promise.resolve( null );
+            }
+        },
+        timerStubs: {
+            setTimeout: function( callback, delay )
+            {
+                var handle = { callback: callback, delay: delay };
+                timeoutCallbacks.push( handle );
+                return handle;
+            },
+            clearTimeout: function( handle )
+            {
+                timeoutCallbacks = timeoutCallbacks.filter( function( pending )
+                {
+                    return pending !== handle;
+                } );
+            },
+            setInterval: function() { return {}; },
+            clearInterval: function() {}
+        },
+        fileContents: {}
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        assert.ok( harness.fileDecorationProvider, 'file decoration provider registered during activation' );
+        harness.fileDecorationProvider.refresh = function()
+        {
+            fileDecorationRefreshes++;
+        };
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        var gitTimeouts = timeoutCallbacks.filter( function( handle )
+        {
+            return handle.delay === 1;
+        } );
+        assert.equal( gitTimeouts.length, 2, 'late extend timeouts scheduled for both external open files' );
+        gitTimeouts[ 0 ].callback();
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        extendDeferredA.resolve();
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( fileDecorationRefreshes, 1, 'late reconcile refreshes decorations even before rebuild swap' );
+        extendDeferredB.resolve();
         return matrixHelpers.flushAsyncWork();
     } );
 } );
@@ -3287,6 +3733,7 @@ QUnit.test( "scan mode button commands return the underlying setting write promi
         var commands = [
             'better-todo-tree.scanWorkspaceAndOpenFiles',
             'better-todo-tree.scanOpenFilesOnly',
+            'better-todo-tree.scanOpenFilesInWorkspaceOnly',
             'better-todo-tree.scanCurrentFileOnly',
             'better-todo-tree.scanWorkspaceOnly'
         ];
@@ -3300,9 +3747,10 @@ QUnit.test( "scan mode button commands return the underlying setting write promi
         }, Promise.resolve() );
     } ).then( function()
     {
-        assert.deepEqual( harness.vscode.configurationUpdates.slice( -4 ), [
+        assert.deepEqual( harness.vscode.configurationUpdates.slice( -5 ), [
             { key: 'tree.scanMode', value: 'workspace', target: harness.vscode.ConfigurationTarget.Workspace },
             { key: 'tree.scanMode', value: 'open files', target: harness.vscode.ConfigurationTarget.Workspace },
+            { key: 'tree.scanMode', value: 'open files in workspace', target: harness.vscode.ConfigurationTarget.Workspace },
             { key: 'tree.scanMode', value: 'current file', target: harness.vscode.ConfigurationTarget.Workspace },
             { key: 'tree.scanMode', value: 'workspace only', target: harness.vscode.ConfigurationTarget.Workspace }
         ] );

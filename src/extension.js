@@ -19,6 +19,9 @@ var commentPatternLanguageResolver = require( './commentPatternLanguageResolver.
 var attributes = require( './attributes.js' );
 var searchResults = require( './searchResults.js' );
 var newTodoFilter = require( './newTodoFilter.js' );
+var fileDecorationProviderModule = require( './fileDecorationProvider.js' );
+var diffRootsHelper = require( './diffRootsHelper.js' );
+var git = require( './git.js' );
 var detection = require( './detection.js' );
 var identity = require( './extensionIdentity.js' );
 var settingsSnapshotModule = require( './runtime/settingsSnapshot.js' );
@@ -54,6 +57,7 @@ var SCAN_MODE_WORKSPACE_AND_OPEN_FILES = 'workspace';
 var SCAN_MODE_OPEN_FILES = 'open files';
 var SCAN_MODE_CURRENT_FILE = 'current file';
 var SCAN_MODE_WORKSPACE_ONLY = 'workspace only';
+var SCAN_MODE_OPEN_FILES_IN_WORKSPACE = 'open files in workspace';
 
 var STATUS_BAR_TOTAL = 'total';
 var STATUS_BAR_TAGS = 'tags';
@@ -91,6 +95,9 @@ function activate( context )
     };
     var scanProgressSession;
     var scanProgressState;
+    var revParseCache = new Map();
+    var scannedUndiffable = { 'no-repo': new Set(), 'diff-failed': new Set() };
+    var fileDecorationProvider;
 
     var SCAN_PROGRESS_ROOT_UNITS = 5;
     var SCAN_PROGRESS_MIN_FILES_PER_ROOT = 25;
@@ -267,6 +274,7 @@ function activate( context )
     config.init( context );
     highlights.init( context, debug );
     utils.init( config );
+    git.init( debug );
     newTodoFilter.init( debug );
     newTodoFilter.setEnabled( config.shouldShowNewTodosOnly() === true );
     rebuildSettingsSnapshot();
@@ -279,6 +287,7 @@ function activate( context )
     var resolveCommentPatternFileNameForLanguage = commentPatternLanguageResolver.createCommentPatternLanguageResolver( vscode, utils );
 
     provider = new tree.TreeNodeProvider( context, debug, setButtonsAndContext );
+    fileDecorationProvider = fileDecorationProviderModule.create( config );
     var statusBarIndicator = vscode.window.createStatusBarItem( vscode.StatusBarAlignment.Left, 0 );
 
     var todoTreeView = vscode.window.createTreeView( identity.VIEW_ID, { treeDataProvider: provider } );
@@ -288,6 +297,7 @@ function activate( context )
     context.subscriptions.push( provider );
     context.subscriptions.push( statusBarIndicator );
     context.subscriptions.push( todoTreeView );
+    context.subscriptions.push( vscode.window.registerFileDecorationProvider( fileDecorationProvider ) );
 
     registerExportContentProvider( identity.EXPORT_SCHEME );
     registerExportContentProvider( identity.LEGACY_EXPORT_SCHEME );
@@ -1519,6 +1529,29 @@ function activate( context )
         return roots;
     }
 
+    function getWorkspaceBoundaryRoots()
+    {
+        var roots = getRootFolders();
+
+        if( roots === undefined )
+        {
+            return [];
+        }
+
+        if( roots.length === 0 && vscode.workspace.workspaceFolders )
+        {
+            vscode.workspace.workspaceFolders.forEach( function( folder )
+            {
+                if( folder.uri && folder.uri.scheme === 'file' )
+                {
+                    roots.push( folder.uri.fsPath );
+                }
+            } );
+        }
+
+        return roots;
+    }
+
     function isDocumentCoveredByWorkspaceSearch( document )
     {
         if( !document || !document.fileName )
@@ -1735,7 +1768,7 @@ function activate( context )
             return notebooks.isNotebookDocument( activeTarget ) ? [ activeTarget ] : [];
         }
 
-        if( scanMode === SCAN_MODE_WORKSPACE_ONLY )
+        if( scanMode === SCAN_MODE_WORKSPACE_ONLY || scanMode === SCAN_MODE_OPEN_FILES_IN_WORKSPACE )
         {
             return openNotebookTargets.filter( function( notebook )
             {
@@ -1773,6 +1806,14 @@ function activate( context )
         if( scanMode === SCAN_MODE_OPEN_FILES )
         {
             return documents;
+        }
+
+        if( diffRootsHelper.excludesExternalTargets( scanMode ) )
+        {
+            return documents.filter( function( document )
+            {
+                return document.fileName !== undefined && isFileInSearchRoots( document.fileName, workspaceRoots );
+            } );
         }
 
         if( scanMode === SCAN_MODE_WORKSPACE_AND_OPEN_FILES )
@@ -1879,7 +1920,7 @@ function activate( context )
         if( !document || !config.isValidScheme( document.uri ) || isIncluded( document.uri ) !== true )
         {
             replaceSearchResults( document.uri, [], store );
-            return;
+            return Promise.resolve();
         }
 
         if( config.scanMode() === SCAN_MODE_CURRENT_FILE )
@@ -1888,24 +1929,27 @@ function activate( context )
             if( activeTarget !== document )
             {
                 replaceSearchResults( document.uri, [], store );
-                return;
+                return Promise.resolve();
             }
         }
 
-        replaceSearchResults( document.uri, applyNewTodoFilterToResults( document.uri, getDocumentScanResults( document ) ), store );
+        return ensureRepoForFile( document.uri.fsPath, config.newTodosGitBaseBranch(), getGitDiffGlobs() ).then( function()
+        {
+            replaceSearchResults( document.uri, applyNewTodoFilterToResults( document.uri, getDocumentScanResults( document ) ), store );
+        } );
     }
 
     function refreshNotebookResults( notebook, store )
     {
         if( !notebook )
         {
-            return;
+            return Promise.resolve();
         }
 
         if( !config.isValidScheme( notebook.uri ) || isIncluded( notebook.uri ) !== true )
         {
             replaceSearchResults( notebook.uri, [], store );
-            return;
+            return Promise.resolve();
         }
 
         if( config.scanMode() === SCAN_MODE_CURRENT_FILE )
@@ -1914,23 +1958,24 @@ function activate( context )
             if( !activeTarget || !activeTarget.uri || activeTarget.uri.toString() !== notebook.uri.toString() )
             {
                 replaceSearchResults( notebook.uri, [], store );
-                return;
+                return Promise.resolve();
             }
         }
 
-        replaceSearchResults( notebook.uri, applyNewTodoFilterToResults( notebook.uri, scanNotebookDocument( notebook ) ), store );
+        return ensureRepoForFile( notebook.uri.fsPath, config.newTodosGitBaseBranch(), getGitDiffGlobs() ).then( function()
+        {
+            replaceSearchResults( notebook.uri, applyNewTodoFilterToResults( notebook.uri, scanNotebookDocument( notebook ) ), store );
+        } );
     }
 
     function refreshScanTarget( target, store )
     {
         if( notebooks.isNotebookDocument( target ) )
         {
-            refreshNotebookResults( target, store );
+            return refreshNotebookResults( target, store );
         }
-        else
-        {
-            refreshTextDocumentResults( target, store );
-        }
+
+        return refreshTextDocumentResults( target, store );
     }
 
     function applyDirtyResultsToTree( options, store )
@@ -1964,16 +2009,19 @@ function activate( context )
         if( pendingRescan === true || pendingDocumentRefreshes.size === 0 )
         {
             pendingDocumentRefreshes.clear();
-            return;
+            return Promise.resolve();
         }
 
-        pendingDocumentRefreshes.forEach( function( document )
+        var refreshes = Array.from( pendingDocumentRefreshes.values() ).map( function( document )
         {
-            refreshScanTarget( document, activeSearchResults );
+            return refreshScanTarget( document, activeSearchResults );
         } );
 
         pendingDocumentRefreshes.clear();
-        applyDirtyResultsToTree( undefined, activeSearchResults );
+        return Promise.all( refreshes ).then( function()
+        {
+            applyDirtyResultsToTree( undefined, activeSearchResults );
+        } );
     }
 
     function getRefreshTargets( workspaceRoots )
@@ -1983,14 +2031,16 @@ function activate( context )
 
     function refreshOpenFiles( workspaceRoots, store, onTargetRefreshed )
     {
-        getRefreshTargets( workspaceRoots ).forEach( function( target )
+        return Promise.all( getRefreshTargets( workspaceRoots ).map( function( target )
         {
-            refreshScanTarget( target, store );
-            if( typeof ( onTargetRefreshed ) === 'function' )
+            return Promise.resolve( refreshScanTarget( target, store ) ).then( function()
             {
-                onTargetRefreshed( target );
-            }
-        } );
+                if( typeof ( onTargetRefreshed ) === 'function' )
+                {
+                    onTargetRefreshed( target );
+                }
+            } );
+        } ) );
     }
 
     function getCandidateSearchRegex()
@@ -2195,6 +2245,13 @@ function activate( context )
         {
             return results;
         }
+
+        var reason = newTodoFilter.classifyUndiffable( uri.fsPath );
+        if( reason === 'no-repo' || reason === 'diff-failed' )
+        {
+            scannedUndiffable[ reason ].add( uri.fsPath );
+        }
+
         return results.filter( function( result )
         {
             return newTodoFilter.isNewTodo( uri.fsPath, result.line );
@@ -2225,6 +2282,147 @@ function activate( context )
         }
 
         return { include: includeGlobs, exclude: excludeGlobs };
+    }
+
+    function collectDiffRoots( searchList )
+    {
+        var targets = getRefreshTargets( searchList );
+        var targetDirs = targets.map( function( target )
+        {
+            var fsPath = target.uri ? target.uri.fsPath : target.fileName;
+            return fsPath ? path.dirname( fsPath ) : undefined;
+        } ).filter( function( dir )
+        {
+            return dir !== undefined;
+        } );
+        var uncached = targetDirs.filter( function( dir )
+        {
+            return !revParseCache.has( dir );
+        } );
+
+        return Promise.all( uncached.map( function( dir )
+        {
+            return git.findRepoRoot( dir ).then( function( root )
+            {
+                revParseCache.set( dir, root );
+            } ).catch( function()
+            {
+                revParseCache.set( dir, null );
+            } );
+        } ) ).then( function()
+        {
+            return diffRootsHelper.collectDiffRootsFrom(
+                config.scanMode(),
+                getWorkspaceSearchRoots(),
+                targetDirs,
+                function( dir )
+                {
+                    return revParseCache.get( dir ) || null;
+                }
+            );
+        } );
+    }
+
+    function raceWithTimeout( promise, timeoutMs, onTimeoutLateResolve )
+    {
+        if( !timeoutMs || timeoutMs <= 0 )
+        {
+            return promise;
+        }
+
+        var timedOut = false;
+        var timer;
+        var timeoutPromise = new Promise( function( resolve )
+        {
+            timer = setTimeout( function()
+            {
+                timedOut = true;
+                resolve();
+            }, timeoutMs );
+        } );
+
+        promise.then( function()
+        {
+            clearTimeout( timer );
+            if( timedOut === true && typeof ( onTimeoutLateResolve ) === 'function' )
+            {
+                onTimeoutLateResolve();
+            }
+        } ).catch( function()
+        {
+            clearTimeout( timer );
+        } );
+
+        return Promise.race( [ promise, timeoutPromise ] );
+    }
+
+    function reconcileFileAfterLateExtend( fsPath )
+    {
+        var targetStore = scanInFlight === true && nextSearchResults ? nextSearchResults : activeSearchResults;
+
+        if( !targetStore )
+        {
+            return;
+        }
+
+        var uri = vscode.Uri.file( fsPath );
+        var key = uri.toString();
+        var doc = openDocuments[ key ];
+        var notebook = notebookRegistry.getByKey( key );
+        var target = notebook || doc;
+        if( target )
+        {
+            Promise.resolve( refreshScanTarget( target, targetStore ) ).then( function()
+            {
+                if( targetStore === activeSearchResults )
+                {
+                    applyDirtyResultsToTree( { fullSort: false, refilterAll: false }, activeSearchResults );
+                }
+                fileDecorationProvider.refresh();
+            } );
+        }
+    }
+
+    function ensureRepoForFile( fsPath, branch, globs )
+    {
+        if( newTodoFilter.isEnabled() !== true || !branch || !fsPath )
+        {
+            return Promise.resolve();
+        }
+
+        var dir = path.dirname( fsPath );
+
+        function resolveRepoRoot()
+        {
+            if( revParseCache.has( dir ) )
+            {
+                return Promise.resolve( revParseCache.get( dir ) );
+            }
+
+            return git.findRepoRoot( dir ).then( function( root )
+            {
+                revParseCache.set( dir, root );
+                return root;
+            } ).catch( function()
+            {
+                revParseCache.set( dir, null );
+                return null;
+            } );
+        }
+
+        return resolveRepoRoot().then( function( repoRoot )
+        {
+            if( repoRoot === null || newTodoFilter.isOwningRepoKnown( repoRoot ) )
+            {
+                return;
+            }
+
+            var extendPromise = newTodoFilter.extendForRepo( repoRoot, branch, globs );
+            return raceWithTimeout( extendPromise, config.newTodosGitTimeoutMs(), function()
+            {
+                reconcileFileAfterLateExtend( fsPath );
+            } );
+        } );
     }
 
     function applyGlobs( store )
@@ -2329,7 +2527,11 @@ function activate( context )
 
     function executeRebuild()
     {
+        revParseCache.clear();
+        scannedUndiffable[ 'no-repo' ].clear();
+        scannedUndiffable[ 'diff-failed' ].clear();
         searchList = getWorkspaceSearchRoots();
+        var workspaceBoundaryRoots = getWorkspaceBoundaryRoots();
         var generation = beginScan( searchList );
         var needsFullFilter = currentFilter !== undefined && currentFilter !== "";
 
@@ -2345,7 +2547,14 @@ function activate( context )
         nextSearchResults = searchResults.createStore();
 
         newTodoFilter.setEnabled( config.shouldShowNewTodosOnly() === true );
-        return newTodoFilter.refresh( config.newTodosGitBaseBranch(), searchList, getGitDiffGlobs() ).then( function( summary )
+        if( typeof ( newTodoFilter.setShowUndiffableFiles ) === 'function' )
+        {
+            newTodoFilter.setShowUndiffableFiles( typeof ( config.newTodosShowUndiffableFiles ) === 'function' ? config.newTodosShowUndiffableFiles() : true );
+        }
+        return collectDiffRoots( searchList ).then( function( diffRoots )
+        {
+            return newTodoFilter.refresh( config.newTodosGitBaseBranch(), diffRoots, getGitDiffGlobs() );
+        } ).then( function( summary )
         {
             if( summary && summary.allFailed === true && newTodoFilter.isEnabled() === true )
             {
@@ -2355,18 +2564,29 @@ function activate( context )
         } ).then( function()
         {
             assertGenerationActive( generation );
-            var refreshTargets = getRefreshTargets( searchList );
+            var refreshTargets = getRefreshTargets( workspaceBoundaryRoots );
             beginScanFinalization( generation, refreshTargets.length );
-            refreshOpenFiles( searchList, nextSearchResults, function( target )
+            return refreshOpenFiles( workspaceBoundaryRoots, nextSearchResults, function( target )
             {
                 completeScanFinalizationTarget( generation, target );
             } );
+        } ).then( function()
+        {
             assertGenerationActive( generation );
             flushStreamingTreeApply( generation, nextSearchResults, undefined );
             prepareStreamingTreeApply( generation, nextSearchResults );
             activeSearchResults = nextSearchResults;
             nextSearchResults = undefined;
+            provider.setNewTodoStatus( {
+                enabled: newTodoFilter.isEnabled(),
+                noRepo: scannedUndiffable[ 'no-repo' ].size,
+                diffFailed: scannedUndiffable[ 'diff-failed' ].size,
+                showUndiffableFiles: typeof ( config.newTodosShowUndiffableFiles ) === 'function' ? config.newTodosShowUndiffableFiles() : true,
+                scanMode: config.scanMode(),
+                baseBranch: config.newTodosGitBaseBranch()
+            } );
             applyDirtyResultsToTree( { fullSort: true, refilterAll: needsFullFilter }, activeSearchResults );
+            fileDecorationProvider.refresh();
         } ).catch( function( error )
         {
             nextSearchResults = undefined;
@@ -2620,11 +2840,13 @@ function activate( context )
     {
         if( !document )
         {
-            return;
+            return Promise.resolve();
         }
 
-        refreshScanTarget( document, activeSearchResults );
-        applyDirtyResultsToTree( undefined, activeSearchResults );
+        return Promise.resolve( refreshScanTarget( document, activeSearchResults ) ).then( function()
+        {
+            applyDirtyResultsToTree( undefined, activeSearchResults );
+        } );
     }
 
     function shouldRefreshFile()
@@ -2918,6 +3140,11 @@ function activate( context )
     function scanWorkspaceOnly()
     {
         return updateSetting( 'tree.scanMode', SCAN_MODE_WORKSPACE_ONLY, vscode.ConfigurationTarget.Workspace );
+    }
+
+    function scanOpenFilesInWorkspaceOnly()
+    {
+        return updateSetting( 'tree.scanMode', SCAN_MODE_OPEN_FILES_IN_WORKSPACE, vscode.ConfigurationTarget.Workspace );
     }
 
     function dumpFolderFilter()
@@ -3850,6 +4077,8 @@ function activate( context )
         registerCommandPair( 'scanOpenFilesOnly', scanOpenFilesOnly );
         registerCommandPair( 'scanCurrentFileOnly', scanCurrentFileOnly );
         registerCommandPair( 'scanWorkspaceOnly', scanWorkspaceOnly );
+        context.subscriptions.push( vscode.commands.registerCommand( 'better-todo-tree.scanOpenFilesInWorkspaceOnly', scanOpenFilesInWorkspaceOnly ) );
+        context.subscriptions.push( vscode.commands.registerCommand( 'todo-tree.scanOpenFilesInWorkspaceOnly', scanOpenFilesInWorkspaceOnly ) );
         context.subscriptions.push( vscode.commands.registerCommand( identity.COMMANDS.importLegacySettings, function()
         {
             context.globalState.update( legacySettingImportMarker, undefined ).then( function()

@@ -7,6 +7,7 @@ var utils = require( './utils.js' );
 var icons = require( './icons.js' );
 var config = require( './config.js' );
 var identity = require( './extensionIdentity.js' );
+var newTodoFilter = require( './newTodoFilter.js' );
 
 var workspaceFolders;
 var nodes = [];
@@ -466,6 +467,12 @@ class TreeNodeProvider
         this._rootListDirty = false;
         this._pendingRefreshRoots = undefined;
         this._expandedStateWriteHandle = undefined;
+        this._newTodoStatus = undefined;
+    }
+
+    setNewTodoStatus( status )
+    {
+        this._newTodoStatus = status;
     }
 
     getChildren( node )
@@ -519,14 +526,23 @@ class TreeNodeProvider
 
             if( result.length === 0 )
             {
-                if( filterStatusNode.label !== "" )
-                {
-                    filterStatusNode.label += ", ";
-                }
-                filterStatusNode.label += "Nothing found";
-                filterStatusNode.icon = "issues";
+                var nts2 = this._newTodoStatus;
+                var suppressNothingFound = nts2 && nts2.enabled === true &&
+                    nts2.scanMode === 'current file' &&
+                    nts2.showUndiffableFiles === false &&
+                    ( nts2.noRepo + nts2.diffFailed ) > 0;
 
-                filterStatusNode.empty = availableNodes.length === 0;
+                if( suppressNothingFound !== true )
+                {
+                    if( filterStatusNode.label !== "" )
+                    {
+                        filterStatusNode.label += ", ";
+                    }
+                    filterStatusNode.label += "Nothing found";
+                    filterStatusNode.icon = "issues";
+
+                    filterStatusNode.empty = availableNodes.length === 0;
+                }
             }
 
             if( filterStatusNode.label !== "" )
@@ -545,6 +561,48 @@ class TreeNodeProvider
                     label: "Scan mode: " + scanMode, notExported: true, isStatusNode: true, icon: "search"
                 };
                 result.unshift( scanModeNode );
+            }
+
+            var nts = this._newTodoStatus;
+            if( nts && nts.enabled === true && ( nts.noRepo + nts.diffFailed ) > 0 )
+            {
+                var totalUndiffable = nts.noRepo + nts.diffFailed;
+                var label;
+                if( nts.scanMode === 'current file' )
+                {
+                    label = nts.showUndiffableFiles === true ?
+                        'Current file shown without filtering' :
+                        'Current file not shown';
+                }
+                else if( nts.showUndiffableFiles === true )
+                {
+                    label = 'New-todos: ' + totalUndiffable + ' shown without filtering';
+                }
+                else
+                {
+                    label = 'New-todos: ' + totalUndiffable + ' not shown';
+                }
+
+                var tooltip = new vscode.MarkdownString();
+                var bucketLabel = nts.showUndiffableFiles === true ? 'Shown without filtering' : 'Hidden';
+                tooltip.appendMarkdown( '**' + bucketLabel + '**\n\n' );
+                if( nts.noRepo > 0 )
+                {
+                    tooltip.appendMarkdown( '- ' + nts.noRepo + ' not in a git repository\n' );
+                }
+                if( nts.diffFailed > 0 )
+                {
+                    tooltip.appendMarkdown( '- ' + nts.diffFailed + ' could not be diffed (errors)\n' );
+                }
+
+                result.unshift( {
+                    label: label,
+                    notExported: true,
+                    isStatusNode: true,
+                    icon: 'git-branch',
+                    tooltip: tooltip,
+                    opensUndiffableSetting: true
+                } );
             }
 
             var compacted = [];
@@ -715,6 +773,24 @@ class TreeNodeProvider
                         { selection: todoSelection }
                     ]
                 };
+
+                if( newTodoFilter.isEnabled() === true && config.newTodosShowUndiffableFiles() === true )
+                {
+                    var reason = newTodoFilter.classifyUndiffable( node.fsPath );
+                    if( reason !== null && reason !== undefined )
+                    {
+                        var todoResourceUri = vscode.Uri.file( node.fsPath );
+                        if( typeof ( todoResourceUri.with ) === 'function' )
+                        {
+                            todoResourceUri = todoResourceUri.with( { query: 'better-todo-tree-node=todo' } );
+                        }
+                        else
+                        {
+                            todoResourceUri.query = 'better-todo-tree-node=todo';
+                        }
+                        treeItem.resourceUri = todoResourceUri;
+                    }
+                }
             }
         }
         else
@@ -723,6 +799,13 @@ class TreeNodeProvider
             treeItem.label = "";
             treeItem.tooltip = node.tooltip;
             treeItem.iconPath = new vscode.ThemeIcon( node.icon );
+            if( node.opensUndiffableSetting === true )
+            {
+                treeItem.command = {
+                    command: 'workbench.action.openSettings',
+                    arguments: [ 'better-todo-tree.filtering.newTodosShowUndiffableFiles' ]
+                };
+            }
         }
 
         if( config.shouldShowCounts() && isPathNode( node ) )

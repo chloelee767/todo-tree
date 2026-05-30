@@ -45,7 +45,7 @@ Each task ends with a commit. Each is independently testable.
 
 `findRepoRoot(dir)` runs `git -C dir rev-parse --show-toplevel`. Resolves to the canonical repo root string (rev-parse emits forward slashes and resolves symlinks), or `null` on any non-zero exit ("not a git repository"). It must **never reject for the not-a-repo case** — `null` is the signal. It may reject only on spawn `error`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `test/git.behavior.test.js`. The existing `loadGitWithStubbedSpawn` helper (lines 1-27) emits stdout lines then `exit` with a code. Reuse it.
 
@@ -75,12 +75,12 @@ QUnit.test( 'findRepoRoot: returns null when not a git repository', function( as
 } );
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx qunit test/git.behavior.test.js`
 Expected: FAIL with "git.findRepoRoot is not a function".
 
-- [ ] **Step 3: Implement `findRepoRoot`**
+- [x] **Step 3: Implement `findRepoRoot`**
 
 Add to `src/git.js` after `getChangedFilesAndLines` (before the `module.exports` block at the end). Mirror the existing spawn style.
 
@@ -119,7 +119,7 @@ function findRepoRoot( dir )
 }
 ```
 
-- [ ] **Step 4: Export it**
+- [x] **Step 4: Export it**
 
 In the `module.exports` block at the end of `src/git.js`, add:
 
@@ -127,12 +127,12 @@ In the `module.exports` block at the end of `src/git.js`, add:
 module.exports.findRepoRoot = findRepoRoot;
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `npx qunit test/git.behavior.test.js`
 Expected: PASS (all tests, including pre-existing ones).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/git.js test/git.behavior.test.js
@@ -151,7 +151,7 @@ git commit -m "feat(git): add findRepoRoot for owning-repo discovery"
 
 `git status --porcelain` output lines look like `?? path/to/new.js` (two status chars, a space, then the path). Collect lines starting with `?? `.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `test/git.behavior.test.js`:
 
@@ -186,12 +186,12 @@ QUnit.test( 'getUntrackedFiles: rejects on git error', function( assert )
 } );
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx qunit test/git.behavior.test.js`
 Expected: FAIL with "git.getUntrackedFiles is not a function".
 
-- [ ] **Step 3: Implement `getUntrackedFiles`**
+- [x] **Step 3: Implement `getUntrackedFiles`**
 
 Add to `src/git.js` after `findRepoRoot`. Reuse the glob-args construction pattern from `getChangedFilesAndLines` (lines 22-28).
 
@@ -249,7 +249,7 @@ function getUntrackedFiles( repoRoot, includeGlobs, excludeGlobs )
 }
 ```
 
-- [ ] **Step 4: Export it**
+- [x] **Step 4: Export it**
 
 In `module.exports`:
 
@@ -257,12 +257,12 @@ In `module.exports`:
 module.exports.getUntrackedFiles = getUntrackedFiles;
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `npx qunit test/git.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/git.js test/git.behavior.test.js
@@ -291,7 +291,7 @@ The untracked sentinel `[1, Infinity]` works with the existing `isNewTodo` range
 
 ### 3a: State, setter, normalization + owning-root resolver
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `test/newTodoFilter.behavior.test.js`:
 
@@ -330,12 +330,12 @@ QUnit.test( 'owning-root: longest prefix wins (nested covered beats covered ance
 } );
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx qunit test/newTodoFilter.behavior.test.js`
 Expected: FAIL with "f.setShowUndiffableFiles is not a function".
 
-- [ ] **Step 3: Add state + setter + resolver helpers**
+- [x] **Step 3: Add state + setter + resolver helpers**
 
 In `src/newTodoFilter.js`, extend the module state (after the existing `var rangesByPath = new Map();` at line 7):
 
@@ -413,14 +413,14 @@ function classifyUndiffable( fsPath )
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx qunit test/newTodoFilter.behavior.test.js`
 Expected: PASS (the refresh-dependent test will be wired in 3b; if it fails on `getUntrackedFiles`/`findRepoRoot` not stubbed, that is expected to be addressed in 3b — proceed).
 
 > Note: the second test calls `refresh`, which 3b modifies. If it fails here because `refresh` does not yet read untracked/covered roots, complete 3b before re-running. The first test (`classifyUndiffable` no-repo) must pass now.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/newTodoFilter.js test/newTodoFilter.behavior.test.js
@@ -429,7 +429,7 @@ git commit -m "feat(filter): add covered/failed roots state and owning-root reso
 
 ### 3b: `refresh` records covered/failed roots + untracked sentinels
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `test/newTodoFilter.behavior.test.js`:
 
@@ -464,12 +464,12 @@ QUnit.test( 'refresh: covered root recorded; failed diff -> failedRoots; untrack
 } );
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx qunit test/newTodoFilter.behavior.test.js`
 Expected: FAIL (`summary.allFailed` wrong or untracked not surfaced).
 
-- [ ] **Step 3: Rewrite `refresh`**
+- [x] **Step 3: Rewrite `refresh`**
 
 Replace the existing `refresh` body (lines 39-74) with:
 
@@ -540,12 +540,12 @@ function refresh( branch, roots, globs )
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx qunit test/newTodoFilter.behavior.test.js`
 Expected: PASS (including the 3a longest-prefix test now that refresh records covered roots).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/newTodoFilter.js test/newTodoFilter.behavior.test.js
@@ -554,7 +554,7 @@ git commit -m "feat(filter): refresh records covered/failed roots and untracked 
 
 ### 3c: New three-case `isNewTodo`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `test/newTodoFilter.behavior.test.js`:
 
@@ -616,12 +616,12 @@ QUnit.test( 'isNewTodo E9b: failed owning repo under covered ancestor -> fail-op
 } );
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx qunit test/newTodoFilter.behavior.test.js`
 Expected: FAIL (current `isNewTodo` returns `false` for absent files unconditionally).
 
-- [ ] **Step 3: Rewrite `isNewTodo`**
+- [x] **Step 3: Rewrite `isNewTodo`**
 
 Replace the existing `isNewTodo` body (lines 25-37) with:
 
@@ -650,12 +650,12 @@ function isNewTodo( fsPath, line )
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx qunit test/newTodoFilter.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/newTodoFilter.js test/newTodoFilter.behavior.test.js
@@ -664,7 +664,7 @@ git commit -m "feat(filter): three-case isNewTodo with fail-open/closed for undi
 
 ### 3d: `extendForRepo` + `isOwningRepoKnown`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `test/newTodoFilter.behavior.test.js`:
 
@@ -702,12 +702,12 @@ QUnit.test( 'extendForRepo: merges ranges without clobbering, idempotent, routes
 } );
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx qunit test/newTodoFilter.behavior.test.js`
 Expected: FAIL with "f.extendForRepo is not a function".
 
-- [ ] **Step 3: Implement `extendForRepo` + `isOwningRepoKnown`**
+- [x] **Step 3: Implement `extendForRepo` + `isOwningRepoKnown`**
 
 Add to `src/newTodoFilter.js` (after `refresh`):
 
@@ -765,7 +765,7 @@ function extendForRepo( repoRoot, branch, globs )
 }
 ```
 
-- [ ] **Step 4: Export new functions**
+- [x] **Step 4: Export new functions**
 
 In the `module.exports` block, add:
 
@@ -776,12 +776,12 @@ module.exports.extendForRepo = extendForRepo;
 module.exports.isOwningRepoKnown = isOwningRepoKnown;
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `npx qunit test/newTodoFilter.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/newTodoFilter.js test/newTodoFilter.behavior.test.js
@@ -798,12 +798,12 @@ git commit -m "feat(filter): add extendForRepo and isOwningRepoKnown for lazy re
 
 Add `newTodosShowUndiffableFiles()` (default `true`) and `newTodosGitTimeoutMs()` (default `2000`).
 
-- [ ] **Step 1: Inspect the existing config test style**
+- [x] **Step 1: Inspect the existing config test style**
 
 Run: `npx qunit test/config.behavior.test.js`
 Expected: PASS (baseline). Open the file to mirror its stubbing of `identity.getSetting`.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Add to `test/config.behavior.test.js`, mirroring how existing tests there stub `identity` / settings (follow the file's existing pattern for an accessor with a default). Example shape (adapt to the file's actual helper):
 
@@ -823,12 +823,12 @@ QUnit.test( 'newTodosGitTimeoutMs defaults to 2000', function( assert )
 
 > If `config.behavior.test.js` has no such helper, add the accessors and verify via the new `extension`-level integration tests in later tasks instead; keep these two unit tests only if the helper exists. Do not invent a helper.
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run: `npx qunit test/config.behavior.test.js`
 Expected: FAIL with "config.newTodosShowUndiffableFiles is not a function".
 
-- [ ] **Step 4: Implement the accessors**
+- [x] **Step 4: Implement the accessors**
 
 In `src/config.js`, after `shouldPassGlobsToGitDiff` (line 424):
 
@@ -851,12 +851,12 @@ module.exports.newTodosShowUndiffableFiles = newTodosShowUndiffableFiles;
 module.exports.newTodosGitTimeoutMs = newTodosGitTimeoutMs;
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `npx qunit test/config.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/config.js test/config.behavior.test.js
@@ -879,7 +879,7 @@ git commit -m "feat(config): add newTodosShowUndiffableFiles and newTodosGitTime
 
 > **Testability note:** `collectDiffRoots` lives inside the `activate` closure, so it is awkward to unit-test directly. Extract the pure mode-gating + dedupe logic into a small helper that takes `(scanMode, workspaceRoots, targetDirs, revParse)` and returns the deduped roots. This lets the mode-gating be tested without VS Code. The closure `collectDiffRoots` calls this helper.
 
-- [ ] **Step 1: Write the failing test for the pure helper**
+- [x] **Step 1: Write the failing test for the pure helper**
 
 Create `test/diffRoots.behavior.test.js`:
 
@@ -933,12 +933,12 @@ QUnit.test( 'collectDiffRootsFrom: dedupes by normalized path; drops null repos'
 } );
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx qunit test/diffRoots.behavior.test.js`
 Expected: FAIL with "Cannot find module '../src/diffRootsHelper.js'".
 
-- [ ] **Step 3: Create the pure helper module**
+- [x] **Step 3: Create the pure helper module**
 
 Create `src/diffRootsHelper.js`:
 
@@ -991,12 +991,12 @@ module.exports.isWorkspaceFamily = isWorkspaceFamily;
 module.exports.collectDiffRootsFrom = collectDiffRootsFrom;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx qunit test/diffRoots.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 5: Wire `collectDiffRoots` + `revParseCache` into `extension.js`**
+- [x] **Step 5: Wire `collectDiffRoots` + `revParseCache` into `extension.js`**
 
 Near the top of the `activate` closure (alongside the scan-mode constants at line 53-56), add the require and cache. At the top of the file with the other requires, add:
 
@@ -1046,7 +1046,7 @@ function collectDiffRoots( searchList )
 
 Confirm `git` is required in `extension.js` (it is used by `newTodoFilter`; if not directly required, add `var git = require( './git.js' );` near the top).
 
-- [ ] **Step 6: Feed `collectDiffRoots` into `refresh` and clear cache in `executeRebuild`**
+- [x] **Step 6: Feed `collectDiffRoots` into `refresh` and clear cache in `executeRebuild`**
 
 In `executeRebuild` (lines 2330-2348), at the very start of the function body add:
 
@@ -1074,12 +1074,12 @@ return collectDiffRoots( searchList ).then( function( diffRoots )
 
 (The rest of the `.then` chain is unchanged.)
 
-- [ ] **Step 7: Run the existing scan-parity + filter tests**
+- [x] **Step 7: Run the existing scan-parity + filter tests**
 
 Run: `npx qunit test/extension.scan-parity.test.js test/newTodoFilter.behavior.test.js test/diffRoots.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/extension.js src/diffRootsHelper.js test/diffRoots.behavior.test.js
@@ -1102,7 +1102,7 @@ git commit -m "feat(scan): mode-gated diff-root seed (collectDiffRoots) fixes fi
 
 Insertion sites await `ensureRepoForFile` before the first `replaceSearchResults` for that file, guarded behind `newTodoFilter.isEnabled()`.
 
-- [ ] **Step 1: Implement a timeout race helper + `ensureRepoForFile`**
+- [x] **Step 1: Implement a timeout race helper + `ensureRepoForFile`**
 
 Add near `collectDiffRoots`:
 
@@ -1198,7 +1198,7 @@ function reconcileFileAfterLateExtend( fsPath )
 
 > Verify the exact key shape of `openDocuments` (the explore showed `Object.keys(openDocuments)`); if it is keyed by `uri.toString()`, the above works. If keyed differently, adapt the lookup to match. Inspect `openDocuments` population before finalizing.
 
-- [ ] **Step 2: Make incremental refresh functions async and await `ensureRepoForFile`**
+- [x] **Step 2: Make incremental refresh functions async and await `ensureRepoForFile`**
 
 Update `refreshTextDocumentResults` (lines 1877-1896) — make it return a promise and await the ensure before the final `replaceSearchResults`:
 
@@ -1284,7 +1284,7 @@ function refreshOpenFiles( workspaceRoots, store, onTargetRefreshed )
 } ).catch( function( error )
 ```
 
-- [ ] **Step 3: Add a filter-layer test for idempotent extend under concurrent calls**
+- [x] **Step 3: Add a filter-layer test for idempotent extend under concurrent calls**
 
 Add to `test/newTodoFilter.behavior.test.js`:
 
@@ -1315,17 +1315,17 @@ QUnit.test( 'extendForRepo: concurrent calls for same repo do not double-add roo
 } );
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx qunit test/newTodoFilter.behavior.test.js test/extension.scan-parity.test.js`
 Expected: PASS.
 
-- [ ] **Step 5: Build to confirm no syntax errors in extension.js**
+- [x] **Step 5: Build to confirm no syntax errors in extension.js**
 
 Run: `npm run webpack`
 Expected: Build succeeds (no errors).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/extension.js test/newTodoFilter.behavior.test.js
@@ -1354,7 +1354,7 @@ The new mode is `'open files in workspace'` → `SCAN_MODE_OPEN_FILES_IN_WORKSPA
 | 4 | `workspace only` | "Scan the workspace only" |
 | 5 | `open files in workspace` | "Scan open files that are inside the workspace only" |
 
-- [ ] **Step 1: Write the failing manifest test**
+- [x] **Step 1: Write the failing manifest test**
 
 Add to `test/package.manifest.test.js` (mirror its existing structure for reading `package.json`):
 
@@ -1374,12 +1374,12 @@ QUnit.test( 'scanMode enum has exactly five values including open files in works
 
 > Inspect `test/package.manifest.test.js` first for the existing property-lookup pattern and reuse it (do not invent `findConfigProperty` if a different accessor exists). If the file has no helper, traverse `pkg.contributes.configuration` to the `properties` object directly.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx qunit test/package.manifest.test.js`
 Expected: FAIL (enum has four values).
 
-- [ ] **Step 3: Update `package.json` enums**
+- [x] **Step 3: Update `package.json` enums**
 
 In both `better-todo-tree.tree.scanMode` (line ~1689) and `todo-tree.tree.scanMode` (line ~1706), append to `enum`:
 
@@ -1405,7 +1405,7 @@ And append a 5th `markdownEnumDescriptions` entry to both:
 ],
 ```
 
-- [ ] **Step 4: Update `package.nls.json` labels**
+- [x] **Step 4: Update `package.nls.json` labels**
 
 Replace the four existing `...scanMode.markdownEnumDescriptions.1`-`.4` values (both `todo-tree.*` and `better-todo-tree.*` keys, lines ~248-255) with the new text and add `.5` for both namespaces:
 
@@ -1422,7 +1422,7 @@ Replace the four existing `...scanMode.markdownEnumDescriptions.1`-`.4` values (
 "better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.5": "Scan open files that are inside the workspace only",
 ```
 
-- [ ] **Step 5: Add the constant in `extension.js`**
+- [x] **Step 5: Add the constant in `extension.js`**
 
 After line 56 (the four existing constants):
 
@@ -1430,7 +1430,7 @@ After line 56 (the four existing constants):
 var SCAN_MODE_OPEN_FILES_IN_WORKSPACE = 'open files in workspace';
 ```
 
-- [ ] **Step 6: Add the scan-mode-selection command**
+- [x] **Step 6: Add the scan-mode-selection command**
 
 In `extension.js`, after `scanWorkspaceOnly` (line ~2918-2921):
 
@@ -1451,12 +1451,12 @@ context.subscriptions.push( vscode.commands.registerCommand( 'better-todo-tree.s
 
 Declare the command in `package.json` `contributes.commands` (mirror the existing `scanWorkspaceOnly` command entry — find it and copy its shape, with `command: "better-todo-tree.scanOpenFilesInWorkspaceOnly"` and a title like "Scan open files in workspace only"). Add the legacy `todo-tree.*` command entry too if the others have one.
 
-- [ ] **Step 7: Run manifest + compatibility tests**
+- [x] **Step 7: Run manifest + compatibility tests**
 
 Run: `npx qunit test/package.manifest.test.js test/settings.compatibility.test.js`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add package.json package.nls.json src/extension.js test/package.manifest.test.js
@@ -1475,7 +1475,7 @@ Mode 2 (`'open files in workspace'`) is **open-files-family**: it behaves like `
 
 ### 8a: Enumeration filtering
 
-- [ ] **Step 1: Update `getOpenDocumentsForScan`**
+- [x] **Step 1: Update `getOpenDocumentsForScan`**
 
 In `getOpenDocumentsForScan` (lines 1749-1787), add a branch for the new mode. It returns the same `documents` as `'open files'` but filtered to in-workspace files. Insert before the `SCAN_MODE_OPEN_FILES` branch (line ~1773):
 
@@ -1489,7 +1489,7 @@ if( scanMode === SCAN_MODE_OPEN_FILES_IN_WORKSPACE )
 }
 ```
 
-- [ ] **Step 2: Update `getNotebookDocumentsForScan`**
+- [x] **Step 2: Update `getNotebookDocumentsForScan`**
 
 In `getNotebookDocumentsForScan` (lines 1724-1747), the existing `SCAN_MODE_WORKSPACE_ONLY` branch (line 1738) filters notebooks to in-workspace. Add the new mode to that same filter condition so mode 2 notebooks are also restricted:
 
@@ -1503,7 +1503,7 @@ if( scanMode === SCAN_MODE_WORKSPACE_ONLY || scanMode === SCAN_MODE_OPEN_FILES_I
 }
 ```
 
-- [ ] **Step 3: Write enumeration tests**
+- [x] **Step 3: Write enumeration tests**
 
 Inspect `test/extension.scan-parity.test.js` for how it exercises `getOpenDocumentsForScan` (it may load `extension.js` with vscode stubs). Add tests asserting:
 - mode 2 with one in-workspace and one external open doc → only the in-workspace doc returned.
@@ -1535,12 +1535,12 @@ QUnit.test( 'excludesExternalTargets: only mode 2', function( assert )
 } );
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx qunit test/diffRoots.behavior.test.js test/extension.scan-parity.test.js`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/extension.js src/diffRootsHelper.js test/diffRoots.behavior.test.js test/extension.scan-parity.test.js
@@ -1556,7 +1556,7 @@ Each site that special-cases `'open files'` must also fire for mode 2. The sites
 - autoRefresh gate `shouldRefreshFile` (line 2632): `!== SCAN_MODE_WORKSPACE_ONLY` — mode 2 should auto-refresh (it is open-files-family), and it is not workspace-only, so it already passes. Verify, no change.
 - `onDidCloseTextDocument` gate (line 3902): same `!== SCAN_MODE_WORKSPACE_ONLY` — mode 2 should remove closed-doc results. Already correct. Verify.
 
-- [ ] **Step 1: Audit each site, confirm correctness, add a regression test**
+- [x] **Step 1: Audit each site, confirm correctness, add a regression test**
 
 For each site above, read the code and confirm mode 2 takes the intended branch. Most need NO change because the gates are written as `=== WORKSPACE_*` or `!== WORKSPACE_ONLY`, which already classify `'open files in workspace'` as open-files-family.
 
@@ -1572,7 +1572,7 @@ QUnit.test( 'isWorkspaceFamily: mode 2 is NOT workspace family', function( asser
 } );
 ```
 
-- [ ] **Step 2: Menu `when` clauses + context key**
+- [x] **Step 2: Menu `when` clauses + context key**
 
 The context key `better-todo-tree-scan-mode` is set to `config.scanMode()` (line 2562) — already carries the new value, no change.
 
@@ -1600,12 +1600,12 @@ For the toolbar cycle: the four toolbar entries (lines 95-110) each show when cu
 
 Rewrite the four existing toolbar entries' `when` + `command` to match this table and add the fifth.
 
-- [ ] **Step 3: Run manifest test**
+- [x] **Step 3: Run manifest test**
 
 Run: `npx qunit test/package.manifest.test.js test/diffRoots.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add package.json test/diffRoots.behavior.test.js
@@ -1627,7 +1627,7 @@ The extension knows each scanned file's `classifyUndiffable`. Compute per-reason
 
 ### 9a: Extension computes per-reason scanned-file counts
 
-- [ ] **Step 1: Add a counts accumulator keyed by reason**
+- [x] **Step 1: Add a counts accumulator keyed by reason**
 
 In `extension.js`, after computing filter state in `executeRebuild`, accumulate undiffable counts over scanned files. The scanned set is the union of files written to `activeSearchResults`. Add a helper that, given the final store, iterates its file URIs and calls `newTodoFilter.classifyUndiffable`:
 
@@ -1690,7 +1690,7 @@ function applyNewTodoFilterToResults( uri, results )
 
 > Remove `computeUndiffableCounts` if you use the accumulator approach (avoid dead code). The accumulator is preferred because it captures hidden-but-scanned files.
 
-- [ ] **Step 2: Thread counts to the provider**
+- [x] **Step 2: Thread counts to the provider**
 
 Find how other status state (e.g. scan-mode, filter counts) is passed to the provider. The provider reads `config.*` directly for scan mode; for the new counts, add a provider setter `provider.setNewTodoStatus({ counts, showUndiffableFiles, scanMode, baseBranch })` called at the end of `executeRebuild` (after the swap), then have `getChildren` read it.
 
@@ -1709,7 +1709,7 @@ provider.setNewTodoStatus( {
 
 > Verify how the provider instance is referenced (`provider`) and that it has a refresh after state set; if `applyDirtyResultsToTree` already triggers a tree refresh, calling the setter just before it is sufficient. Place the setter call before `applyDirtyResultsToTree`.
 
-- [ ] **Step 3: Commit (extension side)**
+- [x] **Step 3: Commit (extension side)**
 
 ```bash
 git add src/extension.js
@@ -1718,7 +1718,7 @@ git commit -m "feat(scan): accumulate per-reason undiffable scanned-file counts 
 
 ### 9b: Provider state + status node rendering
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `test/tree.behavior.test.js` (mirror its existing provider-construction + `getChildren` harness):
 
@@ -1751,12 +1751,12 @@ QUnit.test( 'status node: no undiffable files -> no node', function( assert )
 
 > Inspect `test/tree.behavior.test.js` for the real provider constructor signature and the `getChildren` root-level invocation. Adapt `makeProvider()` to the file's actual setup. If `getChildren` requires a root arg, pass the same as existing tests.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx qunit test/tree.behavior.test.js`
 Expected: FAIL with "provider.setNewTodoStatus is not a function".
 
-- [ ] **Step 3: Add provider state + setter**
+- [x] **Step 3: Add provider state + setter**
 
 In `src/tree.js` provider constructor (lines 447-469), initialize:
 
@@ -1773,7 +1773,7 @@ setNewTodoStatus( status )
 }
 ```
 
-- [ ] **Step 4: Render the node in `getChildren`**
+- [x] **Step 4: Render the node in `getChildren`**
 
 In `getChildren` (after the scan-mode node block, lines ~537-548), add the diffability node. Build label/tooltip per the spec:
 
@@ -1827,7 +1827,7 @@ if( nts && nts.enabled === true && ( nts.noRepo + nts.diffFailed ) > 0 )
 
 > The spec's tooltip wants **two buckets** (`Hidden` then `Shown without filtering`) only when BOTH can be populated simultaneously (fail-closed hides while a per-file fail-open is impossible globally since the setting is one boolean — so in practice exactly one bucket per rebuild). Keep the single-bucket rendering above for v1; the combined-bucket case only arises if mixing, which the single boolean prevents. If `tree.behavior.test.js` asserts both buckets, extend `reasonLines` to emit both bucket headers — but per the design the setting is global, so one bucket is correct. Match the test you write; keep it consistent with the spec's "omit an empty bucket".
 
-- [ ] **Step 5: Make the node clickable (opens the setting)**
+- [x] **Step 5: Make the node clickable (opens the setting)**
 
 In `getTreeItem` status-node branch (lines 720-726), when `node.opensUndiffableSetting`, set a command:
 
@@ -1848,12 +1848,12 @@ else
 }
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `npx qunit test/tree.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/tree.js test/tree.behavior.test.js
@@ -1878,7 +1878,7 @@ The decoration consults `newTodoFilter`: active only when filter is ON, `showUnd
 
 ### 10a: FileDecorationProvider
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/fileDecoration.behavior.test.js`:
 
@@ -1954,12 +1954,12 @@ QUnit.test( 'filter off -> no decoration', function( assert )
 } );
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx qunit test/fileDecoration.behavior.test.js`
 Expected: FAIL ("Cannot find module '../src/fileDecorationProvider.js'").
 
-- [ ] **Step 3: Create `src/fileDecorationProvider.js`**
+- [x] **Step 3: Create `src/fileDecorationProvider.js`**
 
 ```javascript
 var vscode = require( 'vscode' );
@@ -2006,12 +2006,12 @@ function create( config )
 module.exports.create = create;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx qunit test/fileDecoration.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 5: Register provider + fire on rebuild/extend in `extension.js`**
+- [x] **Step 5: Register provider + fire on rebuild/extend in `extension.js`**
 
 In `activate`, register and store the provider:
 
@@ -2028,7 +2028,7 @@ fileDecorationProvider.refresh();
 
 > Confirm `config` exposes `newTodosShowUndiffableFiles` (added in Task 4) and `newTodosGitBaseBranch` (pre-existing) — it does. The provider requires `./newTodoFilter.js` directly (singleton module), so it sees the live state.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/fileDecorationProvider.js src/extension.js test/fileDecoration.behavior.test.js
@@ -2037,7 +2037,7 @@ git commit -m "feat(tree): FileDecorationProvider dims undiffable fail-open file
 
 ### 10b: Todo-node dimming (resourceUri only)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `test/tree.behavior.test.js`. The harness must let the provider see filter state; stub `newTodoFilter` if the provider imports it, or inject via the existing test setup. Assert that a todo node under an undiffable fail-open file sets `resourceUri` to its file's URI (so the `FileDecorationProvider` dims it) and that its existing tooltip is left **unchanged** (no undiffable reason prepended).
 
@@ -2067,12 +2067,12 @@ QUnit.test( 'diffable todo node: no resourceUri injected by undiffable path', fu
 
 > Adapt `makeProviderWithUndiffable` / `makeTodoNode` to the real harness in `tree.behavior.test.js`. If the provider reads `newTodoFilter` via `require`, stub it with `helpers.loadWithStubs` when loading `tree.js`. Inspect how the existing tree tests construct todo nodes and reuse those builders. (If todo nodes already set `resourceUri` for another reason, assert it is the file URI rather than asserting it was newly added.)
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx qunit test/tree.behavior.test.js`
 Expected: FAIL (no `resourceUri` set on todo nodes by the undiffable path).
 
-- [ ] **Step 3: Set `resourceUri` on undiffable-fail-open todo nodes in `getTreeItem`**
+- [x] **Step 3: Set `resourceUri` on undiffable-fail-open todo nodes in `getTreeItem`**
 
 In the todo-node branch of `getTreeItem` (lines 679-718), after the existing command setup, add:
 
@@ -2095,17 +2095,17 @@ if( newTodoFilter.isEnabled() === true && config.newTodosShowUndiffableFiles() =
 
 > **Dimming hook:** stable VS Code TreeItem has no label-foreground API; `resourceUri` + `FileDecorationProvider` is the dim mechanism, and it is shared by both node kinds. The `FileDecoration` carries colour only (no badge), so the todo node and its parent file node both dimming is the intended "every shown node dimmed" effect, not a conflicting double-badge. Do **not** add a reason tooltip here (that lives on the file/path-node decoration and the status node) — only set `resourceUri`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx qunit test/tree.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 5: Build the extension**
+- [x] **Step 5: Build the extension**
 
 Run: `npm run webpack`
 Expected: Build succeeds.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/tree.js test/tree.behavior.test.js
@@ -2123,7 +2123,7 @@ git commit -m "feat(tree): dim undiffable fail-open todo nodes via resourceUri (
 
 Declare `filtering.newTodosShowUndiffableFiles` (boolean, default `true`) and `filtering.newTodosGitTimeoutMs` (number, default `2000`) under `better-todo-tree.*` ONLY (no `todo-tree.*` legacy aliases — these are new settings).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `test/package.manifest.test.js`:
 
@@ -2142,12 +2142,12 @@ QUnit.test( 'new filtering settings declared under better-todo-tree only', funct
 
 > Use whatever properties accessor `test/package.manifest.test.js` already has; if it inspects `pkg.contributes.configuration` directly, traverse to the `properties` object the same way.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx qunit test/package.manifest.test.js`
 Expected: FAIL (settings not declared).
 
-- [ ] **Step 3: Declare the settings**
+- [x] **Step 3: Declare the settings**
 
 In `package.json`, near the other `better-todo-tree.filtering.*` settings (around line 1436-1459), add:
 
@@ -2164,7 +2164,7 @@ In `package.json`, near the other `better-todo-tree.filtering.*` settings (aroun
 },
 ```
 
-- [ ] **Step 4: Add NLS descriptions**
+- [x] **Step 4: Add NLS descriptions**
 
 In `package.nls.json`, near the other filtering descriptions (lines ~287-288):
 
@@ -2173,12 +2173,12 @@ In `package.nls.json`, near the other filtering descriptions (lines ~287-288):
 "newTodosGitTimeoutMs.description": "Maximum time (ms) to wait for first-touch git repo discovery + diff when filtering an open file. On timeout, the file is shown in its fail-open/fail-closed state, then corrected when the diff resolves. 0 disables the timeout (always wait).",
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx qunit test/package.manifest.test.js`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add package.json package.nls.json test/package.manifest.test.js
@@ -2200,7 +2200,7 @@ Current-file mode (5) always scans the active file (no boundary axis). Diffabili
 
 Task 9 already renders the singular current-file label. This task adds `Nothing found` suppression for the fail-closed current-file case.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `test/tree.behavior.test.js`:
 
@@ -2219,12 +2219,12 @@ QUnit.test( 'current-file undiffable fail-closed: Nothing found suppressed, sing
 } );
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx qunit test/tree.behavior.test.js`
 Expected: FAIL (`Nothing found` still appended when result set is empty).
 
-- [ ] **Step 3: Suppress `Nothing found` in the current-file fail-closed case**
+- [x] **Step 3: Suppress `Nothing found` in the current-file fail-closed case**
 
 In `getChildren`, the `Nothing found` block is at lines ~520-530. Guard it so it does NOT fire when the current-file-mode file was dropped by diffability policy. Add a condition using `this._newTodoStatus`:
 
@@ -2248,17 +2248,17 @@ if( result.length === 0 )
 
 > Ensure the diffability status node (Task 9) is `unshift`ed AFTER this block so it still appears. The order of `unshift` calls determines top-to-bottom display; confirm the new-todo node ends up visible. Re-check the relative `unshift` order in `getChildren`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx qunit test/tree.behavior.test.js`
 Expected: PASS.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `npm test`
 Expected: PASS (entire suite).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/tree.js test/tree.behavior.test.js
@@ -2274,7 +2274,7 @@ git commit -m "feat(tree): suppress 'Nothing found' for current-file fail-closed
 
 Add coverage for the cross-product the spec calls out, where feasible within the existing test harness. Where full VS Code integration is impractical, assert the pure-helper + filter-layer behaviors that compose into the integration cases.
 
-- [ ] **Step 1: Add integration-style tests**
+- [x] **Step 1: Add integration-style tests**
 
 For each scan mode (1-5) × file location (in-workspace / other-repo / no-repo) × `newTodosShowUndiffableFiles` (true/false), assert via the filter + helper layers:
 - mode 2 excludes external files (Task 8 enumeration test covers this).
@@ -2296,17 +2296,19 @@ QUnit.test( 'scan-mode matrix: family + external-exclusion + diff-root gating', 
 } );
 ```
 
-- [ ] **Step 2: Run the full suite**
+- [x] **Step 2: Run the full suite**
 
 Run: `npm test`
 Expected: PASS (entire suite).
 
-- [ ] **Step 3: Build for production**
+Actual on this macOS machine: FAIL with known unrelated environment-specific failures in `test/perf.run-all.test.js` and `test/release.workflow-scripts.test.js` (`/etc/os-release`, `mapfile`, `local -n`).
+
+- [x] **Step 3: Build for production**
 
 Run: `npm run webpack`
 Expected: Build succeeds with no errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add test/

@@ -85,5 +85,102 @@ function getChangedFilesAndLines( baseBranch, repoPath, includeGlobs, excludeGlo
     } );
 }
 
+function findRepoRoot( dir )
+{
+    if( !dir )
+    {
+        return Promise.resolve( null );
+    }
+
+    return new Promise( ( resolve, reject ) =>
+    {
+        const args = [ '-C', dir, 'rev-parse', '--show-toplevel' ];
+        debug( `Git rev-parse args: ${args}` );
+        const proc = spawn( 'git', args );
+        let stdoutBuffer = '';
+
+        proc.stdout.on( 'data', ( data ) =>
+        {
+            stdoutBuffer += data;
+        } );
+
+        proc.stderr.on( 'data', () =>
+        {
+            // ignore stderr and treat non-zero exit as a non-repo result
+        } );
+
+        proc.on( 'exit', ( code ) =>
+        {
+            if( code === 0 )
+            {
+                resolve( stdoutBuffer.trim() || null );
+                return;
+            }
+
+            resolve( null );
+        } );
+
+        proc.on( 'error', ( error ) =>
+        {
+            reject( error );
+        } );
+    } );
+}
+
+function getUntrackedFiles( repoRoot, includeGlobs, excludeGlobs )
+{
+    if( !repoRoot )
+    {
+        return Promise.reject( new Error( 'Repository path is required.' ) );
+    }
+
+    return new Promise( ( resolve, reject ) =>
+    {
+        let globArgs = [];
+        if( ( includeGlobs.length + excludeGlobs.length ) > 0 )
+        {
+            globArgs.push( '--' );
+            includeGlobs.forEach( element => { globArgs.push( `:(glob)${element}` ); } );
+            excludeGlobs.forEach( element => { globArgs.push( `:(exclude)${element}` ); } );
+        }
+
+        const args = [ 'status', '--porcelain', '-uall', ...globArgs ];
+        debug( `Git status args: ${args}` );
+        const proc = spawn( 'git', args, { cwd: repoRoot } );
+
+        const untracked = [];
+        const rl = readline.createInterface( { input: proc.stdout, crlfDelay: Infinity } );
+        rl.on( 'line', ( line ) =>
+        {
+            if( line.startsWith( '?? ' ) )
+            {
+                untracked.push( line.substring( 3 ) );
+            }
+        } );
+
+        let stderrBuffer = '';
+        proc.stderr.on( 'data', ( data ) =>
+        {
+            stderrBuffer += data;
+        } );
+
+        proc.on( 'exit', ( code ) =>
+        {
+            if( code !== 0 )
+            {
+                reject( new Error( `Git status stderr: ${stderrBuffer}` ) );
+            }
+            else
+            {
+                resolve( untracked );
+            }
+        } );
+
+        proc.on( 'error', ( error ) => { reject( error ); } );
+    } );
+}
+
 module.exports.init = init;
 module.exports.getChangedFilesAndLines = getChangedFilesAndLines;
+module.exports.findRepoRoot = findRepoRoot;
+module.exports.getUntrackedFiles = getUntrackedFiles;

@@ -92,22 +92,27 @@
                 },
                 {
                     "command": "better-todo-tree.scanOpenFilesOnly",
-                    "when": "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'workspace only' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false",
+                    "when": "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'workspace' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false",
                     "group": "navigation@3"
                 },
                 {
-                    "command": "better-todo-tree.scanCurrentFileOnly",
+                    "command": "better-todo-tree.scanOpenFilesInWorkspaceOnly",
                     "when": "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'open files' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false",
                     "group": "navigation@3"
                 },
                 {
-                    "command": "better-todo-tree.scanWorkspaceAndOpenFiles",
-                    "when": "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'current file' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false",
+                    "command": "better-todo-tree.scanCurrentFileOnly",
+                    "when": "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'open files in workspace' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false",
                     "group": "navigation@3"
                 },
                 {
                     "command": "better-todo-tree.scanWorkspaceOnly",
-                    "when": "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'workspace' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false",
+                    "when": "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'current file' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "better-todo-tree.scanWorkspaceAndOpenFiles",
+                    "when": "view =~ /todo-tree/ && better-todo-tree-scan-mode == 'workspace only' && better-todo-tree-show-scan-mode-button == true && better-todo-tree-scan-busy == false",
                     "group": "navigation@3"
                 },
                 {
@@ -245,6 +250,11 @@
                 {
                     "command": "better-todo-tree.scanOpenFilesOnly",
                     "when": "view =~ /todo-tree/ && better-todo-tree-scan-mode != 'open files'",
+                    "group": "3-view"
+                },
+                {
+                    "command": "better-todo-tree.scanOpenFilesInWorkspaceOnly",
+                    "when": "view =~ /todo-tree/ && better-todo-tree-scan-mode != 'open files in workspace'",
                     "group": "3-view"
                 },
                 {
@@ -460,6 +470,12 @@
                 "title": "%better-todo-tree.command.scanWorkspaceOnly.title%",
                 "category": "%better-todo-tree.command.category%",
                 "icon": "$(folder)"
+            },
+            {
+                "command": "better-todo-tree.scanOpenFilesInWorkspaceOnly",
+                "title": "%better-todo-tree.command.scanOpenFilesInWorkspaceOnly.title%",
+                "category": "%better-todo-tree.command.category%",
+                "icon": "$(file-submodule)"
             },
             {
                 "command": "better-todo-tree.addTag",
@@ -1447,6 +1463,18 @@
                         "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",
                         "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
                     },
+                    "better-todo-tree.filtering.newTodosShowUndiffableFiles": {
+                        "type": "boolean",
+                        "default": true,
+                        "markdownDescription": "%newTodosShowUndiffableFiles.description%"
+                    },
+                    "better-todo-tree.filtering.newTodosGitTimeoutMs": {
+                        "type": "number",
+                        "default": 2000,
+                        "minimum": 0,
+                        "multipleOf": 1,
+                        "markdownDescription": "%newTodosGitTimeoutMs.description%"
+                    },
                     "better-todo-tree.filtering.newTodosGitBaseBranch": {
                         "type": "string",
                         "default": "",
@@ -1692,14 +1720,16 @@
                             "workspace",
                             "open files",
                             "current file",
-                            "workspace only"
+                            "workspace only",
+                            "open files in workspace"
                         ],
                         "markdownDescription": "%better-todo-tree.configuration.tree.scanMode.markdownDescription%",
                         "markdownEnumDescriptions": [
                             "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.1%",
                             "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.2%",
                             "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.3%",
-                            "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.4%"
+                            "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.4%",
+                            "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.5%"
                         ],
                         "type": "string"
                     },
@@ -1709,14 +1739,16 @@
                             "workspace",
                             "open files",
                             "current file",
-                            "workspace only"
+                            "workspace only",
+                            "open files in workspace"
                         ],
                         "markdownDescription": "%better-todo-tree.configuration.tree.scanMode.markdownDescription%",
                         "markdownEnumDescriptions": [
                             "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.1%",
                             "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.2%",
                             "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.3%",
-                            "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.4%"
+                            "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.4%",
+                            "%better-todo-tree.configuration.tree.scanMode.markdownEnumDescriptions.5%"
                         ],
                         "type": "string",
                         "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",

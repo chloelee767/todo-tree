@@ -37,6 +37,16 @@ function createVscodeStub()
         this.id = name;
     }
 
+    function MarkdownString()
+    {
+        this.value = '';
+    }
+
+    MarkdownString.prototype.appendMarkdown = function( value )
+    {
+        this.value += value;
+    };
+
     ThemeIcon.Folder = new ThemeIcon( 'folder' );
     ThemeIcon.File = new ThemeIcon( 'file' );
 
@@ -56,6 +66,7 @@ function createVscodeStub()
         EventEmitter: EventEmitter,
         TreeItem: TreeItem,
         ThemeIcon: ThemeIcon,
+        MarkdownString: MarkdownString,
         Position: Position,
         Selection: Selection,
         Uri: {
@@ -122,7 +133,9 @@ function createConfig( overrides )
         shouldSortTree: function() { return true; },
         shouldSortTagsOnlyViewAlphabetically: function() { return false; },
         showFilterCaseSensitive: function() { return false; },
-        tagGroup: function() { return undefined; }
+        tagGroup: function() { return undefined; },
+        newTodosShowUndiffableFiles: function() { return true; },
+        newTodosGitBaseBranch: function() { return 'main'; }
     }, overrides || {} );
 }
 
@@ -156,12 +169,12 @@ function createResult( fsPath, actualTag, displayText, continuationText, options
 
 QUnit.module( "behavioral tree", function()
 {
-    function loadTreeModule( configStub )
+    function loadTreeModule( configStub, newTodoFilterStub )
     {
-        return loadTreeHarness( configStub ).tree;
+        return loadTreeHarness( configStub, newTodoFilterStub ).tree;
     }
 
-    function loadTreeHarness( configStub )
+    function loadTreeHarness( configStub, newTodoFilterStub )
     {
         var vscodeStub = createVscodeStub();
         utils.init( Object.assign( createConfig(), {
@@ -186,6 +199,10 @@ QUnit.module( "behavioral tree", function()
                     {
                         return { dark: '/tmp/icon.svg', light: '/tmp/icon.svg' };
                     }
+                },
+                './newTodoFilter.js': newTodoFilterStub || {
+                    isEnabled: function() { return false; },
+                    classifyUndiffable: function() { return null; }
                 }
             } ),
             vscode: vscodeStub
@@ -443,5 +460,265 @@ QUnit.module( "behavioral tree", function()
 
         assert.deepEqual( harness.vscode.__eventFires, [ undefined ] );
         assert.equal( provider.getChildren()[ 0 ].label, 'TODO root change item' );
+    } );
+
+    QUnit.test( 'status node: fail-open with undiffable files -> "shown without filtering"', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 2,
+            diffFailed: 0,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: 'main'
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /New-todos/.test( child.label );
+        } );
+
+        assert.ok( node, 'status node present' );
+        assert.ok( /shown without filtering/.test( node.label ), 'fail-open copy' );
+    } );
+
+    QUnit.test( 'status node: no undiffable files -> no node', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 0,
+            diffFailed: 0,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: 'main'
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /New-todos/.test( child.label );
+        } );
+
+        assert.notOk( node, 'no status node when nothing undiffable' );
+    } );
+
+    QUnit.test( 'status node: fail-closed workspace label shows not shown count', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 1,
+            diffFailed: 2,
+            showUndiffableFiles: false,
+            scanMode: 'workspace',
+            baseBranch: 'main'
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /New-todos/.test( child.label );
+        } );
+
+        assert.equal( node.label, 'New-todos: 3 not shown' );
+    } );
+
+    QUnit.test( 'status node: current-file fail-open label is specific to current file', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 1,
+            diffFailed: 0,
+            showUndiffableFiles: true,
+            scanMode: 'current file',
+            baseBranch: 'main'
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /Current file/.test( child.label );
+        } );
+
+        assert.equal( node.label, 'Current file shown without filtering' );
+    } );
+
+    QUnit.test( 'status node: current-file fail-closed label is specific to current file', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 0,
+            diffFailed: 1,
+            showUndiffableFiles: false,
+            scanMode: 'current file',
+            baseBranch: 'main'
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /Current file/.test( child.label );
+        } );
+
+        assert.equal( node.label, 'Current file not shown' );
+    } );
+
+    QUnit.test( 'current-file undiffable fail-closed: Nothing found suppressed, singular node shown', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 1,
+            diffFailed: 0,
+            showUndiffableFiles: false,
+            scanMode: 'current file',
+            baseBranch: 'main'
+        } );
+
+        var labels = provider.getChildren().map( function( child )
+        {
+            return child.label || '';
+        } );
+
+        assert.notOk( labels.some( function( label ) { return /Nothing found/.test( label ); } ), 'Nothing found suppressed' );
+        assert.ok( labels.some( function( label ) { return /Current file not shown/.test( label ); } ), 'singular copy shown' );
+    } );
+
+    QUnit.test( 'status node: tooltip shows hidden bucket and per-reason lines', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 2,
+            diffFailed: 1,
+            showUndiffableFiles: false,
+            scanMode: 'workspace',
+            baseBranch: 'main'
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /New-todos/.test( child.label );
+        } );
+        var treeItem = provider.getTreeItem( node );
+
+        assert.ok( /\*\*Hidden\*\*/.test( treeItem.tooltip.value ), 'hidden bucket header' );
+        assert.ok( /- 2 not in a git repository/.test( treeItem.tooltip.value ), 'no-repo reason' );
+        assert.ok( /- 1 could not be diffed \(errors\)/.test( treeItem.tooltip.value ), 'diff-failed reason' );
+    } );
+
+    QUnit.test( 'status node: click opens undiffable files setting', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 1,
+            diffFailed: 0,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: 'main'
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /New-todos/.test( child.label );
+        } );
+        var treeItem = provider.getTreeItem( node );
+
+        assert.equal( treeItem.command.command, 'workbench.action.openSettings' );
+        assert.deepEqual( treeItem.command.arguments, [ 'better-todo-tree.filtering.newTodosShowUndiffableFiles' ] );
+    } );
+
+    QUnit.test( 'undiffable fail-open todo node sets resourceUri to file URI', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub, {
+            isEnabled: function() { return true; },
+            classifyUndiffable: function() { return 'no-repo'; }
+        } );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.clear( [] );
+        provider.replaceDocument( createResult( '/tmp/a.js', 'TODO', 'first line', [ 'second line' ] ).uri, [
+            createResult( '/tmp/a.js', 'TODO', 'first line', [ 'second line' ] )
+        ] );
+        provider.finalizePendingChanges( undefined, { fullSort: true } );
+
+        var fileNode = provider.getChildren()[ 0 ];
+        var todoNode = provider.getChildren( fileNode )[ 0 ];
+        var treeItem = provider.getTreeItem( todoNode );
+
+        assert.ok( treeItem.resourceUri, 'resourceUri set so decoration provider can dim the row' );
+        assert.equal( treeItem.resourceUri.fsPath, '/tmp/a.js', 'resourceUri is the file URI' );
+        assert.equal( treeItem.resourceUri.query, 'better-todo-tree-node=todo', 'todo rows use a decoration URI that can omit reason tooltip' );
+    } );
+
+    QUnit.test( 'undiffable fail-open todo node leaves tooltip unchanged', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub, {
+            isEnabled: function() { return true; },
+            classifyUndiffable: function() { return 'no-repo'; }
+        } );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.clear( [] );
+        provider.replaceDocument( createResult( '/tmp/a.js', 'TODO', 'first line', [ 'second line' ] ).uri, [
+            createResult( '/tmp/a.js', 'TODO', 'first line', [ 'second line' ] )
+        ] );
+        provider.finalizePendingChanges( undefined, { fullSort: true } );
+
+        var fileNode = provider.getChildren()[ 0 ];
+        var todoNode = provider.getChildren( fileNode )[ 0 ];
+        var treeItem = provider.getTreeItem( todoNode );
+
+        assert.equal( treeItem.tooltip, 'first line\nsecond line' );
+        assert.notOk( /git repository/i.test( String( treeItem.tooltip ) ), 'no undiffable reason text added to todo tooltip' );
+    } );
+
+    QUnit.test( 'diffable todo node does not get the undiffable-path resourceUri', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub, {
+            isEnabled: function() { return true; },
+            classifyUndiffable: function() { return null; }
+        } );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.clear( [] );
+        provider.replaceDocument( createResult( '/tmp/a.js', 'TODO', 'first line' ).uri, [
+            createResult( '/tmp/a.js', 'TODO', 'first line' )
+        ] );
+        provider.finalizePendingChanges( undefined, { fullSort: true } );
+
+        var fileNode = provider.getChildren()[ 0 ];
+        var todoNode = provider.getChildren( fileNode )[ 0 ];
+        var treeItem = provider.getTreeItem( todoNode );
+
+        assert.notOk( treeItem.resourceUri, 'no resourceUri added for a diffable todo node' );
     } );
 } );

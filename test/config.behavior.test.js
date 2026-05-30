@@ -261,6 +261,20 @@ QUnit.test( 'newTodosGitBaseBranch returns the configured setting default', func
     assert.equal( config.newTodosGitBaseBranch(), '', 'defaults to empty string' );
 } );
 
+QUnit.test( 'newTodosShowUndiffableFiles defaults to true', function( assert )
+{
+    var config = loadConfigModule();
+    config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
+    assert.equal( config.newTodosShowUndiffableFiles(), true, 'defaults to true' );
+} );
+
+QUnit.test( 'newTodosGitTimeoutMs defaults to 2000', function( assert )
+{
+    var config = loadConfigModule();
+    config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
+    assert.equal( config.newTodosGitTimeoutMs(), 2000, 'defaults to 2000' );
+} );
+
 QUnit.test( 'shouldShowNewTodosOnly reads workspaceState newTodosOnly', function( assert )
 {
     var config = loadConfigModule();

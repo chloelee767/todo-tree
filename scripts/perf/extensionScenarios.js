@@ -876,6 +876,10 @@ module.exports.buildExtensionScenarioDefinitions = function( deps )
                 {
                     return createTreeView.apply( undefined, arguments );
                 },
+                registerFileDecorationProvider: function()
+                {
+                    return { dispose: function() {} };
+                },
                 withProgress: function( progressOptions, task )
                 {
                     return createProgressSession( progressOptions, task );
