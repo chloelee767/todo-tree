@@ -380,7 +380,7 @@ function skipQuotedString( text, startIndex )
         index++;
     }
 
-    return text.length;
+    return -1;
 }
 
 function findPlainTokenOutsideQuotes( text, token, cursor )
@@ -412,7 +412,19 @@ function findPlainTokenOutsideQuotes( text, token, cursor )
             return tokenIndex;
         }
 
-        searchStart = skipQuotedString( text, quotedIndex );
+        var afterQuote = skipQuotedString( text, quotedIndex );
+
+        if( afterQuote === -1 )
+        {
+            // Unterminated quote (e.g. an apostrophe in prose, a C char
+            // literal or a Rust lifetime): treat it as a literal character
+            // and keep scanning rather than swallowing the rest of the text.
+            searchStart = quotedIndex + 1;
+        }
+        else
+        {
+            searchStart = afterQuote;
+        }
     }
 
     return -1;
@@ -427,6 +439,13 @@ function isOffsetInsideQuotedString( text, offset )
         if( text[ index ] === '"' || text[ index ] === '\'' || text[ index ] === '`' )
         {
             var endIndex = skipQuotedString( text, index );
+
+            if( endIndex === -1 )
+            {
+                // Unterminated quote: treat it as a literal character.
+                index++;
+                continue;
+            }
 
             if( offset < endIndex )
             {
@@ -738,7 +757,9 @@ function scanMultiLineCommentBlocks( text, pattern )
                 break;
             }
 
-            var endIndex = findPlainTokenOutsideQuotes( text, entry.end, start.index + start.length );
+            // Inside a comment the closing delimiter is literal text, so the
+            // end token terminates the block regardless of any quote characters.
+            var endIndex = text.indexOf( entry.end, start.index + start.length );
             if( endIndex === -1 )
             {
                 break;
@@ -1460,7 +1481,8 @@ function findTrailingUnclosedMultiLineCommentStart( text, pattern )
                 return;
             }
 
-            var endIndex = findPlainTokenOutsideQuotes( text, entry.end, start.index + start.length );
+            // The closing delimiter is literal inside the comment body.
+            var endIndex = text.indexOf( entry.end, start.index + start.length );
 
             if( endIndex === -1 )
             {

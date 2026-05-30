@@ -253,6 +253,65 @@ QUnit.module( "behavioral detection", function( hooks )
         ] );
     } );
 
+    QUnit.test( "an apostrophe inside a block comment does not hide a later block comment todo", function( assert )
+    {
+        var results = detection.scanText( createUri( "/tmp/sample.js" ), [
+            "/* don't change this */",
+            "/* TODO later */"
+        ].join( "\n" ) );
+
+        assert.deepEqual( results.map( function( result )
+        {
+            return {
+                line: result.line,
+                tag: result.actualTag,
+                text: result.displayText
+            };
+        } ), [
+            { line: 2, tag: "TODO", text: "later" }
+        ] );
+    } );
+
+    QUnit.test( "a double-quote inside a block comment does not hide a later block comment todo", function( assert )
+    {
+        var results = detection.scanText( createUri( "/tmp/sample.js" ), [
+            "/* a \" quote */",
+            "/* TODO later */"
+        ].join( "\n" ) );
+
+        assert.deepEqual( results.map( function( result )
+        {
+            return {
+                line: result.line,
+                tag: result.actualTag,
+                text: result.displayText
+            };
+        } ), [
+            { line: 2, tag: "TODO", text: "later" }
+        ] );
+    } );
+
+    QUnit.test( "a stray apostrophe in an earlier line comment does not hide a later block comment", function( assert )
+    {
+        var results = detection.scanText( createUri( "/tmp/sample.js" ), [
+            "// it's a counter",
+            "/* TODO real comment */",
+            "// TODO trailing"
+        ].join( "\n" ) );
+
+        assert.deepEqual( results.map( function( result )
+        {
+            return {
+                line: result.line,
+                tag: result.actualTag,
+                text: result.displayText
+            };
+        } ), [
+            { line: 2, tag: "TODO", text: "real comment" },
+            { line: 3, tag: "TODO", text: "trailing" }
+        ] );
+    } );
+
     QUnit.test( "issue #812 inline block comments stop at the closing delimiter and ignore NOT-TODO controls", function( assert )
     {
         var text = [
