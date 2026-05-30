@@ -108,7 +108,7 @@ QUnit.test( 'issue #883 notebook scanning keeps vscode-notebook-cell enabled in 
 
 QUnit.test( 'toggle new todos only button defaults to enabled', function( assert )
 {
-    var buttonSetting = getConfigurationProperty( 'better-todo-tree.tree.buttons.toggleNewTodosOnly' );
+    var buttonSetting = getConfigurationProperty( 'better-todo-tree.tree.buttons.newTodosOnly' );
 
     assert.strictEqual( buttonSetting.default, true );
 } );

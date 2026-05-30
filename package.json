@@ -176,12 +176,12 @@
                     "group": "navigation@9"
                 },
                 {
-                    "command": "better-todo-tree.toggleNewTodosOnly",
+                    "command": "better-todo-tree.enableNewTodosOnly",
                     "when": "view == todo-tree-view && better-todo-tree-show-toggle-new-todos-only-button && better-todo-tree-new-todos-only == false",
                     "group": "navigation@10"
                 },
                 {
-                    "command": "better-todo-tree.toggleNewTodosOnlyActive",
+                    "command": "better-todo-tree.disableNewTodosOnly",
                     "when": "view == todo-tree-view && better-todo-tree-show-toggle-new-todos-only-button && better-todo-tree-new-todos-only == true",
                     "group": "navigation@10"
                 }
@@ -566,14 +566,14 @@
                 "category": "%better-todo-tree.command.category%"
             },
             {
-                "command": "better-todo-tree.toggleNewTodosOnly",
-                "title": "%better-todo-tree.command.toggleNewTodosOnly.title%",
+                "command": "better-todo-tree.enableNewTodosOnly",
+                "title": "%better-todo-tree.command.enableNewTodosOnly.title%",
                 "category": "%better-todo-tree.command.category%",
                 "icon": "$(git-commit)"
             },
             {
-                "command": "better-todo-tree.toggleNewTodosOnlyActive",
-                "title": "%better-todo-tree.command.toggleNewTodosOnly.title%",
+                "command": "better-todo-tree.disableNewTodosOnly",
+                "title": "%better-todo-tree.command.disableNewTodosOnly.title%",
                 "category": "%better-todo-tree.command.category%",
                 "icon": "$(git-branch)"
             },
@@ -1439,11 +1439,27 @@
                         "markdownDescription": "%filteringNewTodosOnly.description%",
                         "scope": "resource"
                     },
+                    "todo-tree.filtering.newTodosOnly": {
+                        "type": "boolean",
+                        "default": false,
+                        "markdownDescription": "%filteringNewTodosOnly.description%",
+                        "scope": "resource",
+                        "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",
+                        "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
+                    },
                     "better-todo-tree.filtering.newTodosGitBaseBranch": {
                         "type": "string",
                         "default": "",
                         "markdownDescription": "%newTodosGitBaseBranch.description%",
                         "scope": "resource"
+                    },
+                    "todo-tree.filtering.newTodosGitBaseBranch": {
+                        "type": "string",
+                        "default": "",
+                        "markdownDescription": "%newTodosGitBaseBranch.description%",
+                        "scope": "resource",
+                        "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",
+                        "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
                     },
                     "better-todo-tree.filtering.passGlobsToGitDiff": {
                         "type": "boolean",
@@ -1962,10 +1978,17 @@
                         "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",
                         "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
                     },
-                    "better-todo-tree.tree.buttons.toggleNewTodosOnly": {
+                    "better-todo-tree.tree.buttons.newTodosOnly": {
                         "type": "boolean",
                         "default": true,
-                        "markdownDescription": "%treeButtons.toggleNewTodosOnly%"
+                        "markdownDescription": "%treeButtons.newTodosOnly%"
+                    },
+                    "todo-tree.tree.buttons.newTodosOnly": {
+                        "type": "boolean",
+                        "default": true,
+                        "markdownDescription": "%treeButtons.newTodosOnly%",
+                        "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",
+                        "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
                     }
                 }
             },

@@ -287,7 +287,8 @@
     "filteringNewTodosOnly.description": "When enabled, only TODOs on lines changed relative to the configured base branch are shown. Use the 'Toggle New Todos Only' command to switch at runtime.",
     "newTodosGitBaseBranch.description": "Git branch or revision to diff against when 'new todos only' mode is enabled. Only TODOs on lines changed relative to this ref are shown.",
     "passGlobsToGitDiff.description": "Apply the configured include/exclude globs to the git diff used by 'new todos only' mode.",
-    "treeButtons.toggleNewTodosOnly": "Show a tree view button to toggle 'new todos only' mode.",
-    "better-todo-tree.command.toggleNewTodosOnly.title": "Toggle New Todos Only",
+    "treeButtons.newTodosOnly": "Show a tree view button to toggle 'new todos only' mode.",
+    "better-todo-tree.command.enableNewTodosOnly.title": "Show New Todos Only",
+    "better-todo-tree.command.disableNewTodosOnly.title": "Show All Todos",
     "better-todo-tree.command.newTodosChangeBranch.title": "New Todos: Change Base Branch"
 }

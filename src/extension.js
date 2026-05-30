@@ -2527,7 +2527,7 @@ function activate( context )
         var showRefreshButton = treeButtons.refresh === true;
         var showExpandButton = treeButtons.expand === true;
         var showExportButton = treeButtons.export === true;
-        var showToggleNewTodosOnlyButton = treeButtons.toggleNewTodosOnly === true;
+        var showToggleNewTodosOnlyButton = treeButtons.newTodosOnly === true;
         var totalBusyCount = Object.keys( treeBusyStateCounts ).reduce( function( total, key )
         {
             return total + treeBusyStateCounts[ key ];
@@ -3680,8 +3680,8 @@ function activate( context )
             context.workspaceState.update( 'newTodosOnly', turningOn ).then( rebuild );
         }
 
-        registerCommandPair( 'toggleNewTodosOnly', doToggleNewTodosOnly );
-        registerCommandPair( 'toggleNewTodosOnlyActive', doToggleNewTodosOnly );
+        registerCommandPair( 'enableNewTodosOnly', doToggleNewTodosOnly );
+        registerCommandPair( 'disableNewTodosOnly', doToggleNewTodosOnly );
 
         registerCommandPair( 'newTodosChangeBranch', function()
         {
