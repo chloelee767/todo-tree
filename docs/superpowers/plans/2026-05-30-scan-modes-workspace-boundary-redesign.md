@@ -1,5 +1,7 @@
 # New-Todos-Only Filter across scan modes Implementation Plan
 
+> **Status:** partially implemented, blocked (see status section below)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the new-todos-only filter work in every scan mode, encode the workspace boundary as a fifth scan mode, and surface undiffable files with a fail-open/fail-closed setting.
@@ -7,6 +9,13 @@
 **Architecture:** Two orthogonal axes. **Boundary axis** (is a file inside the workspace?) is enforced in `extension.js` at scan-target enumeration and encoded as the scan mode. **Diffability axis** (can the file be git-diffed?) lives in `newTodoFilter.js`: it tracks covered/failed repo roots, decides each file by its owning (innermost) repo via longest-prefix match, and supports fail-open/fail-closed. Repo discovery happens before filtering (eager seed from scan targets + lazy per-file backfill); the `isNewTodo` predicate stays pure and sync.
 
 **Tech Stack:** Node.js, VS Code Extension API, QUnit tests (`test/*.behavior.test.js`), git CLI via `child_process.spawn`.
+
+---
+
+## Status
+
+Completed all except for task 13 (the last task). The implemetor was unable to properly completing all steps of task 13 due to environment issues. 
+The implementor completed what was reasonably possible given the issues -- see the task 13 section for the details.
 
 ---
 
@@ -2328,3 +2337,4 @@ When executing, watch these consistency points:
 - **Store iteration API:** verify the real method on `searchResults` store before using it in the counts accumulator (Task 9a uses an `applyNewTodoFilterToResults` accumulator instead, avoiding store iteration — prefer that).
 - **`tree.js` requires `newTodoFilter`:** add the require if absent (Tasks 9, 10, 12 depend on it).
 - **Menu cycle order:** the five-mode toolbar cycle table in Task 8b must match the registered command names exactly.
+
