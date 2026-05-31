@@ -578,6 +578,59 @@ QUnit.module( "behavioral tree", function()
         assert.equal( node.label, 'Current file not shown' );
     } );
 
+    QUnit.test( 'status node: no-branch count contributes to label and tooltip', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 0,
+            diffFailed: 0,
+            noBranch: 2,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: ''
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /New-todos/.test( child.label );
+        } );
+        var treeItem = provider.getTreeItem( node );
+
+        assert.equal( node.label, 'New-todos: 2 shown without filtering' );
+        assert.ok( /- 2 no base branch configured/.test( treeItem.tooltip.value ), 'no-branch tooltip line present' );
+    } );
+
+    QUnit.test( 'status node: no-branch stays additive beside no-repo', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 1,
+            diffFailed: 0,
+            noBranch: 2,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: ''
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /New-todos/.test( child.label );
+        } );
+        var treeItem = provider.getTreeItem( node );
+
+        assert.equal( node.label, 'New-todos: 3 shown without filtering' );
+        assert.ok( /- 1 not in a git repository/.test( treeItem.tooltip.value ), 'no-repo line kept' );
+        assert.ok( /- 2 no base branch configured/.test( treeItem.tooltip.value ), 'no-branch line added' );
+    } );
+
     QUnit.test( 'current-file undiffable fail-closed: Nothing found suppressed, singular node shown', function( assert )
     {
         var configStub = createConfig();
@@ -600,6 +653,31 @@ QUnit.module( "behavioral tree", function()
 
         assert.notOk( labels.some( function( label ) { return /Nothing found/.test( label ); } ), 'Nothing found suppressed' );
         assert.ok( labels.some( function( label ) { return /Current file not shown/.test( label ); } ), 'singular copy shown' );
+    } );
+
+    QUnit.test( 'current-file fail-closed: no-branch suppresses Nothing found', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 0,
+            diffFailed: 0,
+            noBranch: 1,
+            showUndiffableFiles: false,
+            scanMode: 'current file',
+            baseBranch: ''
+        } );
+
+        var labels = provider.getChildren().map( function( child )
+        {
+            return child.label || '';
+        } );
+
+        assert.notOk( labels.some( function( label ) { return /Nothing found/.test( label ); } ), 'Nothing found suppressed' );
+        assert.ok( labels.some( function( label ) { return /Current file not shown/.test( label ); } ), 'undiffable status still visible' );
     } );
 
     QUnit.test( 'status node: tooltip shows hidden bucket and per-reason lines', function( assert )

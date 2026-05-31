@@ -108,6 +108,69 @@ QUnit.test( 'setShowUndiffableFiles + classifyUndiffable: no-repo when no coveri
     assert.equal( f.classifyUndiffable( '/elsewhere/file.js' ), 'no-repo', 'no covered/failed root' );
 } );
 
+QUnit.test( 'refresh: enabled + empty branch classifies absent files as no-branch', function( assert )
+{
+    var done = assert.async();
+    var f = loadFilter();
+    f.init( function() {} );
+    f.setEnabled( true );
+    f.refresh( '', [ '/repo' ], { include: [], exclude: [] } ).then( function( summary )
+    {
+        assert.equal( summary.allFailed, false, 'blank branch does not report git failures' );
+        assert.equal( f.classifyUndiffable( '/repo/a.js' ), 'no-branch', 'blank branch is a config error' );
+        done();
+    } );
+} );
+
+QUnit.test( 'refresh: enabled + whitespace-only branch also classifies as no-branch', function( assert )
+{
+    var done = assert.async();
+    var f = loadFilter();
+    f.init( function() {} );
+    f.setEnabled( true );
+    f.refresh( '   ', [ '/repo' ], { include: [], exclude: [] } ).then( function()
+    {
+        assert.equal( f.classifyUndiffable( '/repo/a.js' ), 'no-branch', 'whitespace is treated as missing' );
+        done();
+    } );
+} );
+
+QUnit.test( 'isNewTodo: no-branch still obeys fail-open and fail-closed', function( assert )
+{
+    var done = assert.async();
+    var f = loadFilter();
+    f.init( function() {} );
+    f.setEnabled( true );
+    f.refresh( '', [ '/repo' ], { include: [], exclude: [] } ).then( function()
+    {
+        f.setShowUndiffableFiles( true );
+        assert.equal( f.isNewTodo( '/repo/a.js', 1 ), true, 'fail-open keeps the todo' );
+        f.setShowUndiffableFiles( false );
+        assert.equal( f.isNewTodo( '/repo/a.js', 1 ), false, 'fail-closed hides the todo' );
+        done();
+    } );
+} );
+
+QUnit.test( 'refresh: non-empty branch clears no-branch state', function( assert )
+{
+    var done = assert.async();
+    var f = loadFilter( {
+        getChangedFilesAndLines: function() { return Promise.resolve( new Map() ); },
+        getUntrackedFiles: function() { return Promise.resolve( [] ); }
+    } );
+    f.init( function() {} );
+    f.setEnabled( true );
+    f.refresh( '', [ '/repo' ], { include: [], exclude: [] } ).then( function()
+    {
+        assert.equal( f.classifyUndiffable( '/repo/a.js' ), 'no-branch', 'sanity check: first refresh sets no-branch' );
+        return f.refresh( 'main', [ '/repo' ], { include: [], exclude: [] } );
+    } ).then( function()
+    {
+        assert.notEqual( f.classifyUndiffable( '/repo/a.js' ), 'no-branch', 'next refresh recomputes state and clears no-branch' );
+        done();
+    } );
+} );
+
 QUnit.test( 'owning-root: longest prefix wins (nested covered beats covered ancestor)', function( assert )
 {
     var done = assert.async();

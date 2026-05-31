@@ -10,6 +10,12 @@ var failedRoots = [];
 var pendingRepoExtends = new Map();
 var refreshGeneration = 0;
 var showUndiffableFiles = true;
+var missingBranch = false;
+
+function isBlankBranch( branch )
+{
+    return !branch || String( branch ).trim() === '';
+}
 
 function init( debug_ )
 {
@@ -76,6 +82,10 @@ function classifyUndiffable( fsPath )
     {
         return null;
     }
+    if( missingBranch === true )
+    {
+        return 'no-branch';
+    }
     var coveredOwning = findOwningRoot( fsPath, coveredRoots );
     var failedOwning = findOwningRoot( fsPath, failedRoots );
     if( coveredOwning !== undefined && ( failedOwning === undefined || coveredOwning.length >= failedOwning.length ) )
@@ -112,11 +122,12 @@ function isNewTodo( fsPath, line )
 function refresh( branch, roots, globs )
 {
     baseBranch = branch;
+    missingBranch = enabled === true && isBlankBranch( branch );
     refreshGeneration += 1;
     var generation = refreshGeneration;
     pendingRepoExtends = new Map();
 
-    if( enabled !== true || !branch || !roots || roots.length === 0 )
+    if( enabled !== true || isBlankBranch( branch ) || !roots || roots.length === 0 )
     {
         rangesByPath = new Map();
         coveredRoots = [];

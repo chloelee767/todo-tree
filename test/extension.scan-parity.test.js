@@ -1466,6 +1466,7 @@ QUnit.test( "new-todos filter threads scanned undiffable counts to the provider 
             enabled: true,
             noRepo: 0,
             diffFailed: 1,
+            noBranch: 0,
             showUndiffableFiles: true,
             scanMode: 'workspace',
             baseBranch: ''
@@ -1527,6 +1528,7 @@ QUnit.test( "new-todos filter counts hidden no-repo files separately from diff f
             enabled: true,
             noRepo: 1,
             diffFailed: 0,
+            noBranch: 0,
             showUndiffableFiles: true,
             scanMode: 'workspace',
             baseBranch: ''
@@ -1594,10 +1596,111 @@ QUnit.test( "new-todos filter counts undiffable files once even when one file yi
             enabled: true,
             noRepo: 0,
             diffFailed: 1,
+            noBranch: 0,
             showUndiffableFiles: true,
             scanMode: 'workspace',
             baseBranch: ''
         } );
+    } );
+} );
+
+QUnit.test( 'new-todos filter threads no-branch counts to the provider', function( assert )
+{
+    var fixture = [ {
+        uri: matrixHelpers.createUri( '/workspace/src/no-branch.js' ),
+        actualTag: 'TODO',
+        displayText: 'missing branch item',
+        continuationText: [],
+        line: 1
+    } ];
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        ripgrepMatches: [ {
+            fsPath: 'src/no-branch.js',
+            line: 1,
+            column: 1,
+            match: 'TODO missing branch item'
+        } ],
+        fileContents: {
+            '/workspace/src/no-branch.js': '// TODO missing branch item'
+        },
+        scanTextImpl: function( uri )
+        {
+            return uri.fsPath === '/workspace/src/no-branch.js' ? fixture : [];
+        },
+        newTodosGitBaseBranch: '',
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function( fsPath )
+            {
+                return fsPath === '/workspace/src/no-branch.js' ? 'no-branch' : null;
+            },
+            isNewTodo: function() { return false; },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); }
+        },
+        gitStub: {
+            findRepoRoot: function() { return Promise.resolve( '/workspace' ); }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.deepEqual( harness.provider.newTodoStatus, {
+            enabled: true,
+            noRepo: 0,
+            diffFailed: 0,
+            noBranch: 1,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: ''
+        } );
+    } );
+} );
+
+QUnit.test( 'new-todos filter warns when enabled and base branch is blank', function( assert )
+{
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        newTodosGitBaseBranch: '',
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function() { return null; },
+            isNewTodo: function() { return true; },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); }
+        },
+        gitStub: {
+            findRepoRoot: function() { return Promise.resolve( '/workspace' ); }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.warningMessages.length, 1, 'one warning shown' );
+        assert.equal(
+            harness.warningMessages[ 0 ],
+            'Better Todo Tree: no base branch set for new-todos filter (set filtering.newTodosGitBaseBranch)',
+            'warns with the new config-error copy'
+        );
     } );
 } );
 

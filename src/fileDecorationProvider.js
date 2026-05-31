@@ -7,6 +7,10 @@ function reasonTooltip( reason, baseBranch )
     {
         return "Not in a git repository : new-todo filtering can't be applied. Showing all todos.";
     }
+    if( reason === 'no-branch' )
+    {
+        return 'No base branch configured for new-todo filtering. Showing all todos.';
+    }
 
     return "git diff failed (repo may not have base branch `" + baseBranch + "`). Showing all todos.";
 }

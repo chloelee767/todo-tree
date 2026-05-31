@@ -96,7 +96,7 @@ function activate( context )
     var scanProgressSession;
     var scanProgressState;
     var revParseCache = new Map();
-    var scannedUndiffable = { 'no-repo': new Set(), 'diff-failed': new Set() };
+    var scannedUndiffable = { 'no-repo': new Set(), 'diff-failed': new Set(), 'no-branch': new Set() };
     var fileDecorationProvider;
 
     var SCAN_PROGRESS_ROOT_UNITS = 5;
@@ -2247,7 +2247,7 @@ function activate( context )
         }
 
         var reason = newTodoFilter.classifyUndiffable( uri.fsPath );
-        if( reason === 'no-repo' || reason === 'diff-failed' )
+        if( reason === 'no-repo' || reason === 'diff-failed' || reason === 'no-branch' )
         {
             scannedUndiffable[ reason ].add( uri.fsPath );
         }
@@ -2530,6 +2530,7 @@ function activate( context )
         revParseCache.clear();
         scannedUndiffable[ 'no-repo' ].clear();
         scannedUndiffable[ 'diff-failed' ].clear();
+        scannedUndiffable[ 'no-branch' ].clear();
         searchList = getWorkspaceSearchRoots();
         var workspaceBoundaryRoots = getWorkspaceBoundaryRoots();
         var generation = beginScan( searchList );
@@ -2556,9 +2557,16 @@ function activate( context )
             return newTodoFilter.refresh( config.newTodosGitBaseBranch(), diffRoots, getGitDiffGlobs() );
         } ).then( function( summary )
         {
-            if( summary && summary.allFailed === true && newTodoFilter.isEnabled() === true )
+            var configuredBaseBranch = config.newTodosGitBaseBranch();
+            var missingBaseBranch = !configuredBaseBranch || String( configuredBaseBranch ).trim() === '';
+
+            if( newTodoFilter.isEnabled() === true && missingBaseBranch === true )
             {
-                vscode.window.showWarningMessage( identity.DISPLAY_NAME + ": could not compute git diff for new-todos filter (check base branch '" + config.newTodosGitBaseBranch() + "')" );
+                vscode.window.showWarningMessage( identity.DISPLAY_NAME + ': no base branch set for new-todos filter (set filtering.newTodosGitBaseBranch)' );
+            }
+            else if( summary && summary.allFailed === true && newTodoFilter.isEnabled() === true )
+            {
+                vscode.window.showWarningMessage( identity.DISPLAY_NAME + ": could not compute git diff for new-todos filter (check base branch '" + configuredBaseBranch + "')" );
             }
             return iterateSearchList( generation, nextSearchResults );
         } ).then( function()
@@ -2581,6 +2589,7 @@ function activate( context )
                 enabled: newTodoFilter.isEnabled(),
                 noRepo: scannedUndiffable[ 'no-repo' ].size,
                 diffFailed: scannedUndiffable[ 'diff-failed' ].size,
+                noBranch: scannedUndiffable[ 'no-branch' ].size,
                 showUndiffableFiles: typeof ( config.newTodosShowUndiffableFiles ) === 'function' ? config.newTodosShowUndiffableFiles() : true,
                 scanMode: config.scanMode(),
                 baseBranch: config.newTodosGitBaseBranch()

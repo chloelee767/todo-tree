@@ -94,3 +94,17 @@ QUnit.test( 'todo decoration URI -> dimmed decoration without reason tooltip', f
     assert.equal( deco.color.id, 'gitDecoration.ignoredResourceForeground' );
     assert.equal( deco.tooltip, undefined, 'todo rows get no reason tooltip from file decoration provider' );
 } );
+
+QUnit.test( 'no-branch -> tooltip explains missing base branch', function( assert )
+{
+    var mod = loadProvider( {
+        isEnabled: function() { return true; },
+        classifyUndiffable: function() { return 'no-branch'; }
+    } );
+    var provider = mod.create( makeConfig() );
+    var deco = provider.provideFileDecoration( { fsPath: '/x/a.js' } );
+
+    assert.ok( deco, 'decoration returned' );
+    assert.ok( /no base branch configured/i.test( deco.tooltip ), 'no-branch reason in tooltip' );
+    assert.ok( /showing all todos/i.test( deco.tooltip ), 'fail-open explanation kept' );
+} );

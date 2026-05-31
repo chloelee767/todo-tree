@@ -472,7 +472,7 @@ class TreeNodeProvider
 
     setNewTodoStatus( status )
     {
-        this._newTodoStatus = status;
+        this._newTodoStatus = status ? Object.assign( { noBranch: 0 }, status ) : status;
     }
 
     getChildren( node )
@@ -530,7 +530,7 @@ class TreeNodeProvider
                 var suppressNothingFound = nts2 && nts2.enabled === true &&
                     nts2.scanMode === 'current file' &&
                     nts2.showUndiffableFiles === false &&
-                    ( nts2.noRepo + nts2.diffFailed ) > 0;
+                    ( nts2.noRepo + nts2.diffFailed + nts2.noBranch ) > 0;
 
                 if( suppressNothingFound !== true )
                 {
@@ -564,9 +564,9 @@ class TreeNodeProvider
             }
 
             var nts = this._newTodoStatus;
-            if( nts && nts.enabled === true && ( nts.noRepo + nts.diffFailed ) > 0 )
+            if( nts && nts.enabled === true && ( nts.noRepo + nts.diffFailed + nts.noBranch ) > 0 )
             {
-                var totalUndiffable = nts.noRepo + nts.diffFailed;
+                var totalUndiffable = nts.noRepo + nts.diffFailed + nts.noBranch;
                 var label;
                 if( nts.scanMode === 'current file' )
                 {
@@ -593,6 +593,10 @@ class TreeNodeProvider
                 if( nts.diffFailed > 0 )
                 {
                     tooltip.appendMarkdown( '- ' + nts.diffFailed + ' could not be diffed (errors)\n' );
+                }
+                if( nts.noBranch > 0 )
+                {
+                    tooltip.appendMarkdown( '- ' + nts.noBranch + ' no base branch configured\n' );
                 }
 
                 result.unshift( {
