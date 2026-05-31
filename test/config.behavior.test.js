@@ -53,6 +53,11 @@ function loadConfigModule( options )
                     return options.configuredRipgrepPath !== undefined ? options.configuredRipgrepPath : defaultValue;
                 }
 
+                if( setting === 'git.path' )
+                {
+                    return options.configuredGitPath !== undefined ? options.configuredGitPath : defaultValue;
+                }
+
                 return defaultValue;
             }
         }
@@ -252,6 +257,34 @@ QUnit.test( 'ripgrepPath keeps older VS Code packaged ripgrep locations compatib
     } );
 
     assert.equal( config.ripgrepPath(), olderLegacyPath );
+} );
+
+QUnit.test( 'gitPath defaults to git', function( assert )
+{
+    var config = loadConfigModule();
+    config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
+
+    assert.equal( config.gitPath(), 'git', 'defaults to git from PATH' );
+} );
+
+QUnit.test( 'gitPath returns a configured custom path', function( assert )
+{
+    var config = loadConfigModule( {
+        configuredGitPath: '/custom/tools/git'
+    } );
+    config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
+
+    assert.equal( config.gitPath(), '/custom/tools/git', 'returns configured executable path' );
+} );
+
+QUnit.test( 'gitPath falls back to git when configured to an empty string', function( assert )
+{
+    var config = loadConfigModule( {
+        configuredGitPath: ''
+    } );
+    config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
+
+    assert.equal( config.gitPath(), 'git', 'treats empty string like the default command' );
 } );
 
 QUnit.test( 'newTodosGitBaseBranch returns the configured setting default', function( assert )

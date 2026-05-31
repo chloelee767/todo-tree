@@ -423,6 +423,11 @@ function newTodosGitTimeoutMs()
     return identity.getSetting( 'filtering.newTodosGitTimeoutMs', 2000 );
 }
 
+function gitPath()
+{
+    return identity.getSetting( 'git.path', 'git' ) || 'git';
+}
+
 function shouldShowNewTodosOnly()
 {
     return context.workspaceState.get( 'newTodosOnly', identity.getSetting( 'filtering.newTodosOnly', false ) );
@@ -477,6 +482,7 @@ module.exports.shouldShowActivityBarBadge = shouldShowActivityBarBadge;
 module.exports.newTodosGitBaseBranch = newTodosGitBaseBranch;
 module.exports.newTodosShowUndiffableFiles = newTodosShowUndiffableFiles;
 module.exports.newTodosGitTimeoutMs = newTodosGitTimeoutMs;
+module.exports.gitPath = gitPath;
 module.exports.shouldShowNewTodosOnly = shouldShowNewTodosOnly;
 module.exports.shouldPassGlobsToGitDiff = shouldPassGlobsToGitDiff;
 module.exports.getTreeStateValue = getTreeStateValue;

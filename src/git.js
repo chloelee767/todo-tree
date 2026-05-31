@@ -1,5 +1,6 @@
 const { spawn } = require( 'child_process' );
 const readline = require( 'readline' );
+var config = require( './config.js' );
 
 var debug;
 
@@ -29,7 +30,7 @@ function getChangedFilesAndLines( baseBranch, repoPath, includeGlobs, excludeGlo
 
         const args = [ 'diff', baseBranch, '--unified=0', '--no-ext-diff', '--no-prefix', ...globArgs ];
         debug( `Git diff args: ${args}` );
-        const gitDiff = spawn( 'git', args, { cwd: repoPath } );
+        const gitDiff = spawn( config.gitPath(), args, { cwd: repoPath } );
 
         let currentFile = null;
         let currentFileLines = [];
@@ -114,7 +115,7 @@ function findRepoRoot( dir )
     {
         const args = [ '-C', dir, 'rev-parse', '--show-toplevel' ];
         debug( `Git rev-parse args: ${args}` );
-        const proc = spawn( 'git', args );
+        const proc = spawn( config.gitPath(), args );
         let stdoutBuffer = '';
 
         proc.stdout.on( 'data', ( data ) =>
@@ -164,7 +165,7 @@ function getUntrackedFiles( repoRoot, includeGlobs, excludeGlobs )
 
         const args = [ 'status', '--porcelain', '-uall', ...globArgs ];
         debug( `Git status args: ${args}` );
-        const proc = spawn( 'git', args, { cwd: repoRoot } );
+        const proc = spawn( config.gitPath(), args, { cwd: repoRoot } );
 
         const untracked = [];
         const rl = readline.createInterface( { input: proc.stdout, crlfDelay: Infinity } );

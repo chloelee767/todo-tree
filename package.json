@@ -2152,6 +2152,25 @@
                         "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
                     }
                 }
+            },
+            {
+                "title": "%better-todo-tree.configuration.git%",
+                "order": 8,
+                "type": "object",
+                "properties": {
+                    "better-todo-tree.git.path": {
+                        "default": "git",
+                        "markdownDescription": "%better-todo-tree.configuration.git.path.markdownDescription%",
+                        "type": "string"
+                    },
+                    "todo-tree.git.path": {
+                        "default": "git",
+                        "markdownDescription": "%better-todo-tree.configuration.git.path.markdownDescription%",
+                        "type": "string",
+                        "deprecationMessage": "%todo-tree.configuration.legacyNamespace.deprecationMessage%",
+                        "markdownDeprecationMessage": "%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%"
+                    }
+                }
             }
         ]
     },

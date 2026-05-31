@@ -73,6 +73,12 @@ function loadGitWithStubbedSpawn( stdoutLines, stderrData, exitCode )
 
                 return proc;
             }
+        },
+        './config.js': {
+            gitPath: function()
+            {
+                return options.configuredGitPath || 'git';
+            }
         }
     } );
 
@@ -183,6 +189,56 @@ QUnit.test( 'getUntrackedFiles: spawns git status with --porcelain -uall', funct
     {
         assert.strictEqual( git._lastSpawnCall.command, 'git', 'spawns git' );
         assert.deepEqual( git._lastSpawnCall.args, [ 'status', '--porcelain', '-uall' ], 'requests individual untracked files, including inside new directories' );
+        done();
+    } );
+} );
+
+QUnit.test( 'getChangedFilesAndLines uses the configured git binary for diff', function( assert )
+{
+    var done = assert.async();
+    var git = loadGitWithStubbedSpawn( {
+        stdoutLines: [ 'diff --git a.js a.js', '@@ -1,0 +3,1 @@' ],
+        configuredGitPath: '/custom/bin/git'
+    } );
+    git.init( function() {} );
+
+    git.getChangedFilesAndLines( 'main', '/repo', [], [] ).then( function()
+    {
+        assert.strictEqual( git._lastSpawnCall.command, '/custom/bin/git', 'diff uses configured git path' );
+        done();
+    } );
+} );
+
+QUnit.test( 'findRepoRoot uses the configured git binary for rev-parse', function( assert )
+{
+    var done = assert.async();
+    var git = loadGitWithStubbedSpawn( {
+        stdout: '/repo/root\n',
+        exitCode: 0,
+        exitAfterStdout: true,
+        configuredGitPath: '/custom/bin/git'
+    } );
+    git.init( function() {} );
+
+    git.findRepoRoot( '/repo/subdir' ).then( function()
+    {
+        assert.strictEqual( git._lastSpawnCall.command, '/custom/bin/git', 'rev-parse uses configured git path' );
+        done();
+    } );
+} );
+
+QUnit.test( 'getUntrackedFiles uses the configured git binary for status', function( assert )
+{
+    var done = assert.async();
+    var git = loadGitWithStubbedSpawn( {
+        stdoutLines: [ '?? newfile.js' ],
+        configuredGitPath: '/custom/bin/git'
+    } );
+    git.init( function() {} );
+
+    git.getUntrackedFiles( '/repo', [], [] ).then( function()
+    {
+        assert.strictEqual( git._lastSpawnCall.command, '/custom/bin/git', 'status uses configured git path' );
         done();
     } );
 } );

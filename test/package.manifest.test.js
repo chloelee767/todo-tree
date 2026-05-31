@@ -73,6 +73,14 @@ QUnit.test( 'ripgrep executable setting documents packaged binary behavior', fun
     );
 } );
 
+QUnit.test( 'git executable setting has current and legacy keys with PATH fallback wording', function( assert )
+{
+    var englishNls = readPackageNls( 'package.nls.json' );
+
+    assert.equal( englishNls[ 'todo-tree.configuration.git.path.markdownDescription' ], 'Custom git executable path. Empty or unset uses the normal git from PATH.' );
+    assert.equal( englishNls[ 'better-todo-tree.configuration.git.path.markdownDescription' ], 'Custom git executable path. Empty or unset uses the normal git from PATH.' );
+} );
+
 QUnit.test( 'legacy settings remain present and deprecated', function( assert )
 {
     var currentSetting = getConfigurationProperty( 'better-todo-tree.general.tags' );
@@ -166,6 +174,38 @@ QUnit.test( 'new filtering settings are declared under better-todo-tree only', f
     assert.equal( englishNls[ 'newTodosGitTimeoutMs.description' ], 'Maximum time (ms) to wait for first-touch git repo discovery + diff when filtering an open file. On timeout, the file is shown in its fail-open/fail-closed state, then corrected when the diff resolves. 0 disables the timeout (always wait).' );
     assert.equal( chineseNls[ 'newTodosShowUndiffableFiles.description' ], "启用“仅显示新待办”后，如果某个文件无法执行 git diff（不在仓库中，或 diff 失败），则显示该文件中的所有待办事项（fail-open）。禁用后，则完全隐藏这类文件（fail-closed）。" );
     assert.equal( chineseNls[ 'newTodosGitTimeoutMs.description' ], '筛选打开文件时，首次触发 git 仓库发现和 diff 的最大等待时间（毫秒）。超时后，文件会先按 fail-open 或 fail-closed 状态显示，待 diff 完成后再修正。设为 0 可禁用超时（始终等待）。' );
+} );
+
+QUnit.test( 'git executable setting is declared in a dedicated git section for current and legacy namespaces', function( assert )
+{
+    var packageJson = readPackageJson();
+    var englishNls = readPackageNls( 'package.nls.json' );
+    var chineseNls = readPackageNls( 'package.nls.zh-cn.json' );
+    var currentSetting = getConfigurationProperty( 'better-todo-tree.git.path' );
+    var legacySetting = getConfigurationProperty( 'todo-tree.git.path' );
+    var gitSection = packageJson.contributes.configuration.find( function( section )
+    {
+        return section.title === '%better-todo-tree.configuration.git%';
+    } );
+
+    assert.ok( gitSection, 'git section exists' );
+    assert.strictEqual( gitSection.order, 8 );
+    assert.ok( currentSetting, 'current setting exists' );
+    assert.strictEqual( currentSetting.type, 'string' );
+    assert.strictEqual( currentSetting.default, 'git' );
+    assert.equal( currentSetting.markdownDescription, '%better-todo-tree.configuration.git.path.markdownDescription%' );
+    assert.ok( legacySetting, 'legacy setting exists' );
+    assert.strictEqual( legacySetting.type, 'string' );
+    assert.strictEqual( legacySetting.default, 'git' );
+    assert.equal( legacySetting.markdownDescription, '%better-todo-tree.configuration.git.path.markdownDescription%' );
+    assert.equal( legacySetting.deprecationMessage, '%todo-tree.configuration.legacyNamespace.deprecationMessage%' );
+    assert.equal( legacySetting.markdownDeprecationMessage, '%todo-tree.configuration.legacyNamespace.markdownDeprecationMessage%' );
+    assert.equal( englishNls[ 'todo-tree.configuration.git' ], 'Git' );
+    assert.equal( englishNls[ 'better-todo-tree.configuration.git' ], 'Git' );
+    assert.equal( chineseNls[ 'todo-tree.configuration.git' ], 'Git' );
+    assert.equal( chineseNls[ 'better-todo-tree.configuration.git' ], 'Git' );
+    assert.equal( chineseNls[ 'todo-tree.configuration.git.path.markdownDescription' ], '自定义 git 可执行文件路径。空值或未设置时，使用 PATH 中的普通 git。' );
+    assert.equal( chineseNls[ 'better-todo-tree.configuration.git.path.markdownDescription' ], '自定义 git 可执行文件路径。空值或未设置时，使用 PATH 中的普通 git。' );
 } );
 
 QUnit.test( 'scan mode enums expose exactly five values including open files in workspace for current and legacy namespaces', function( assert )
