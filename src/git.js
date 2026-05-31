@@ -58,13 +58,33 @@ function getChangedFilesAndLines( baseBranch, repoPath, includeGlobs, excludeGlo
             }
         } );
 
+        let stdoutClosed = false;
+        let exitCode;
+        let settled = false;
+
+        function settle()
+        {
+            if( settled || stdoutClosed !== true || exitCode === undefined )
+            {
+                return;
+            }
+            settled = true;
+            if( exitCode !== 0 )
+            {
+                reject( new Error( `Git diff stderr: ${stderrBuffer}` ) );
+                return;
+            }
+            resolve( lineRanges );
+        }
+
         rl.on( 'close', () =>
         {
             if( currentFile && currentFileLines.length > 0 )
             {
                 lineRanges.set( currentFile, currentFileLines );
             }
-            resolve( lineRanges );
+            stdoutClosed = true;
+            settle();
         } );
 
         let stderrBuffer = '';
@@ -75,10 +95,8 @@ function getChangedFilesAndLines( baseBranch, repoPath, includeGlobs, excludeGlo
 
         gitDiff.on( 'exit', ( code ) =>
         {
-            if( code !== 0 )
-            {
-                reject( new Error( `Git diff stderr: ${stderrBuffer}` ) );
-            }
+            exitCode = code;
+            settle();
         } );
 
         gitDiff.on( 'error', ( error ) => { reject( error ); } );

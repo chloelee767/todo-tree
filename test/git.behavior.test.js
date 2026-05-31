@@ -133,15 +133,25 @@ QUnit.test( 'rejects when base branch or repo path missing', function( assert )
     } );
 } );
 
-QUnit.test( 'rejects when git exits with non-zero code', function( assert )
+QUnit.test( 'rejects when git exits with non-zero code after stdout closes', function( assert )
 {
     var done = assert.async();
     assert.timeout( 1000 );
-    var git = loadGitWithStubbedSpawn( [ 'diff --git a.js a.js', '' ], 'fatal: bad revision', 1 );
+    assert.expect( 1 );
+    var git = loadGitWithStubbedSpawn( {
+        stdoutLines: [ 'diff --git a.js a.js', '' ],
+        stderrData: 'fatal: bad revision',
+        exitCode: 1,
+        exitAfterStdout: true
+    } );
     git.init( function() {} );
-    git.getChangedFilesAndLines( 'main', '/repo', [], [] ).catch( function( err )
+    git.getChangedFilesAndLines( 'main', '/repo', [], [] ).then( function()
     {
-        assert.ok( /Git diff stderr/i.test( err.message ), 'rejects with stderr error' );
+        assert.ok( false, 'must not resolve when git exits non-zero' );
+        done();
+    } ).catch( function( err )
+    {
+        assert.ok( /Git diff stderr/i.test( err.message ), 'rejects with stderr error after stdout drained' );
         done();
     } );
 } );

@@ -64,7 +64,7 @@ The existing stub test at `test/git.behavior.test.js:136-147` passes because the
 **Files:**
 - Create: `test/git.realrepo.test.js`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `test/git.realrepo.test.js` with this exact content:
 
@@ -174,7 +174,7 @@ QUnit.module( 'real-repo git', function( hooks )
 } );
 ```
 
-- [ ] **Step 2: Run the tests to verify the bug reproduces**
+- [x] **Step 2: Run the tests to verify the bug reproduces**
 
 Run: `npx qunit test/git.realrepo.test.js`
 
@@ -186,7 +186,7 @@ Expected:
 
 If `git` is not on PATH, the test will throw from `createRepo` and the module fails — that is the intended hard-fail behavior; do not add skip logic.
 
-- [ ] **Step 3: Commit the failing test**
+- [x] **Step 3: Commit the failing test**
 
 ```bash
 git add test/git.realrepo.test.js
@@ -202,7 +202,7 @@ git commit -m "test(git): real-repo coverage exposing nonexistent-branch race"
 
 This asserts the user-visible symptom through the real `git.js`: a nonexistent branch must mark the root as failed (`allFailed: true`), classify files as `diff-failed`, and — with fail-open enabled — keep tracked todos visible.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `test/newTodoFilter.realrepo.test.js` with this exact content:
 
@@ -322,7 +322,7 @@ QUnit.module( 'real-repo newTodoFilter', function( hooks )
 } );
 ```
 
-- [ ] **Step 2: Run the tests to verify the bug reproduces**
+- [x] **Step 2: Run the tests to verify the bug reproduces**
 
 Run: `npx qunit test/newTodoFilter.realrepo.test.js`
 
@@ -332,7 +332,7 @@ Expected:
 - **FAIL: `nonexistent branch, fail-open: tracked todos stay visible`** (`isNewTodo` returns `false` today because the file is wrongly treated as covered-with-no-changes)
 - PASS: `nonexistent branch, fail-closed: tracked todos hidden` (returns `false` today, but for the wrong reason — it will still pass after the fix because fail-closed also yields `false`)
 
-- [ ] **Step 3: Commit the failing test**
+- [x] **Step 3: Commit the failing test**
 
 ```bash
 git add test/newTodoFilter.realrepo.test.js
@@ -348,7 +348,7 @@ git commit -m "test(newTodoFilter): real-repo coverage for nonexistent-branch sy
 
 The fix: stop resolving inside `rl.on('close')`. Record that stdout finished and run a single `settle()` that resolves on exit code 0 and rejects otherwise. `settle()` runs only after BOTH stdout has closed AND the exit code is known, and guards against double-settling.
 
-- [ ] **Step 1: Replace the close/exit handlers**
+- [x] **Step 1: Replace the close/exit handlers**
 
 In `src/git.js`, replace this block (currently lines 61-82):
 
@@ -427,19 +427,19 @@ Notes:
 - `exitCode === undefined` is the "not known yet" sentinel; git exit codes are always numbers, so 0 is distinguishable from undefined.
 - `settle()` is guarded by `settled` so the spawn-`error` path and the exit path cannot double-settle.
 
-- [ ] **Step 2: Run the git.js real-repo tests to verify they pass**
+- [x] **Step 2: Run the git.js real-repo tests to verify they pass**
 
 Run: `npx qunit test/git.realrepo.test.js`
 
 Expected: ALL PASS (4 tests), including `nonexistent branch rejects`.
 
-- [ ] **Step 3: Run the newTodoFilter real-repo tests to verify they pass**
+- [x] **Step 3: Run the newTodoFilter real-repo tests to verify they pass**
 
 Run: `npx qunit test/newTodoFilter.realrepo.test.js`
 
 Expected: ALL PASS (4 tests), including the two that previously failed.
 
-- [ ] **Step 4: Commit the fix**
+- [x] **Step 4: Commit the fix**
 
 ```bash
 git add src/git.js
@@ -455,7 +455,7 @@ git commit -m "fix(git): reject failed diff instead of racing rl-close against e
 
 The stub currently emits `'exit'` before stdout drains (unless `exitAfterStdout` is set), so the non-zero-exit test passed even with the racy code. Make the non-zero-exit test use `exitAfterStdout: true` so the stub emits `'exit'` AFTER stdout closes — the real ordering. With the Task 3 fix this still rejects; without it, it would resolve (proving the stub now guards the race).
 
-- [ ] **Step 1: Update the non-zero-exit stub test**
+- [x] **Step 1: Update the non-zero-exit stub test**
 
 In `test/git.behavior.test.js`, replace this test (currently lines 136-147):
 
@@ -503,13 +503,13 @@ QUnit.test( 'rejects when git exits with non-zero code after stdout closes', fun
 
 (The options-object form is required because `exitAfterStdout` is only read when the first arg is an options object — see `loadGitWithStubbedSpawn` at `test/git.behavior.test.js:10-16` and the `exitAfterStdout` branch at lines 62-69.)
 
-- [ ] **Step 2: Run the stub-based git tests to verify they pass**
+- [x] **Step 2: Run the stub-based git tests to verify they pass**
 
 Run: `npx qunit test/git.behavior.test.js`
 
 Expected: ALL PASS. The updated `rejects when git exits with non-zero code after stdout closes` now exercises the real ordering and still rejects thanks to the Task 3 fix.
 
-- [ ] **Step 3: Commit the stub fix**
+- [x] **Step 3: Commit the stub fix**
 
 ```bash
 git add test/git.behavior.test.js
@@ -522,7 +522,7 @@ git commit -m "test(git): stub non-zero exit after stdout close to guard the rac
 
 **Files:** none (verification only)
 
-- [ ] **Step 1: Run the full suite**
+- [x] **Step 1: Run the full suite**
 
 Run: `npx qunit 2>&1 | tail -8`
 
@@ -532,7 +532,7 @@ Run: `npx qunit 2>&1 | grep -i "^not ok"`
 
 Expected: every line is under `perf runtime benchmarks >` or `release workflow scripts >`. No failures in `git`, `real-repo git`, `real-repo newTodoFilter`, `behavioral git`, `behavioral newTodoFilter`, or `tree` modules.
 
-- [ ] **Step 2: Confirm the fix end-to-end against a throwaway repo (optional sanity check)**
+- [x] **Step 2: Confirm the fix end-to-end against a throwaway repo (optional sanity check)**
 
 Run:
 
