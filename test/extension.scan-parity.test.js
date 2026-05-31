@@ -350,12 +350,17 @@ function createVscodeStub( options )
     var executedCommands = [];
     var warningMessages = [];
     var errorMessages = [];
+    var inputBoxCalls = [];
     var progressSessions = [];
     var statusBarItems = [];
     var treeViews = [];
     var configurationUpdates = [];
     var automaticGitRefreshInterval = options.automaticGitRefreshInterval !== undefined ? options.automaticGitRefreshInterval : 0;
     var periodicRefreshInterval = options.periodicRefreshInterval !== undefined ? options.periodicRefreshInterval : 0;
+    var visibleTextEditors = options.visibleTextEditors || ( options.openTextDocuments || [] ).map( function( document )
+    {
+        return { document: document };
+    } );
     var visibleNotebookEditors = Object.prototype.hasOwnProperty.call( options, 'visibleNotebookEditors' ) ?
         options.visibleNotebookEditors :
         ( options.notebookDocuments || [] ).map( function( notebook )
@@ -578,6 +583,7 @@ function createVscodeStub( options )
         statusBarItems: statusBarItems,
         treeViews: treeViews,
         configurationUpdates: configurationUpdates,
+        inputBoxCalls: inputBoxCalls,
         extensions: {
             all: options.extensions || [ {
                 packageJSON: {
@@ -633,7 +639,7 @@ function createVscodeStub( options )
             }
         },
         window: {
-            visibleTextEditors: options.visibleTextEditors || [],
+            visibleTextEditors: visibleTextEditors,
             activeTextEditor: options.activeTextEditor,
             activeNotebookEditor: activeNotebookEditor,
             visibleNotebookEditors: visibleNotebookEditors,
@@ -684,7 +690,17 @@ function createVscodeStub( options )
                 errorMessages.push( message );
                 return Promise.resolve();
             },
-            showInputBox: function() { return Promise.resolve(); },
+            showInputBox: function( inputOptions )
+            {
+                inputBoxCalls.push( inputOptions );
+
+                if( typeof ( options.inputBoxResult ) === 'function' )
+                {
+                    return Promise.resolve( options.inputBoxResult( inputOptions ) );
+                }
+
+                return Promise.resolve( options.inputBoxResult );
+            },
             showQuickPick: function() { return Promise.resolve(); },
             showTextDocument: function() { return Promise.resolve(); },
             onDidChangeActiveTextEditor: function( listener ) { return registerListener( workspaceListeners, 'activeEditor', listener ); },
@@ -783,6 +799,14 @@ function createExtensionHarness( options )
         storageUri: matrixHelpers.createUri( '/tmp/storage' ),
         globalStorageUri: matrixHelpers.createUri( '/tmp/global-storage' )
     };
+    var workspaceStateUpdates = [];
+    var originalWorkspaceStateUpdate = context.workspaceState.update.bind( context.workspaceState );
+
+    context.workspaceState.update = function( key, value )
+    {
+        workspaceStateUpdates.push( { key: key, value: value } );
+        return originalWorkspaceStateUpdate( key, value );
+    };
     var notebooksModule = Object.assign( {}, actualNotebooks, {
         createRegistry: function()
         {
@@ -826,7 +850,7 @@ function createExtensionHarness( options )
             };
         }
     } );
-    var configStub = {
+    var configStub = Object.assign( {
         init: function() {},
         refreshTagGroupLookup: function() {},
         setTreeStateOverride: function( key, value )
@@ -900,9 +924,10 @@ function createExtensionHarness( options )
         shouldShowNewTodosOnly: function() { return false; },
         newTodosShowUndiffableFiles: function() { return options.newTodosShowUndiffableFiles !== undefined ? options.newTodosShowUndiffableFiles : true; },
         newTodosGitBaseBranch: function() { return options.newTodosGitBaseBranch !== undefined ? options.newTodosGitBaseBranch : ''; },
+        resolveNewTodosGitBaseBranch: function() { return options.newTodosGitBaseBranch !== undefined ? options.newTodosGitBaseBranch : ''; },
         newTodosGitTimeoutMs: function() { return options.newTodosGitTimeoutMs !== undefined ? options.newTodosGitTimeoutMs : 0; },
         shouldPassGlobsToGitDiff: function() { return false; }
-    };
+    }, options.configOverrides || {} );
     var utilsStub = {
         init: function() {},
         isCodicon: function() { return false; },
@@ -1271,6 +1296,7 @@ function createExtensionHarness( options )
     return {
         extension: extension,
         context: context,
+        commands: vscodeStub.commandHandlers,
         get provider()
         {
             return provider;
@@ -1286,8 +1312,11 @@ function createExtensionHarness( options )
         {
             return registeredFileDecorationProvider;
         },
+        configurationUpdates: vscodeStub.configurationUpdates,
+        inputBoxCalls: vscodeStub.inputBoxCalls,
         vscode: vscodeStub,
         windowListeners: vscodeStub.windowListeners,
+        workspaceStateUpdates: workspaceStateUpdates,
         warningMessages: vscodeStub.warningMessages,
         errorMessages: vscodeStub.errorMessages
     };
@@ -1667,7 +1696,7 @@ QUnit.test( 'new-todos filter threads no-branch counts to the provider', functio
     } );
 } );
 
-QUnit.test( 'new-todos filter warns when enabled and base branch is blank', function( assert )
+QUnit.test( 'new-todos filter does not warn when the global base branch is blank but all repos resolve', function( assert )
 {
     var harness = createExtensionHarness( {
         scanMode: 'workspace',
@@ -1695,12 +1724,182 @@ QUnit.test( 'new-todos filter warns when enabled and base branch is blank', func
         return matrixHelpers.flushAsyncWork();
     } ).then( function()
     {
-        assert.equal( harness.warningMessages.length, 1, 'one warning shown' );
+        assert.equal( harness.warningMessages.length, 0, 'no warning shown' );
+    } );
+} );
+
+QUnit.test( 'new-todos filter warns when at least one diff root resolves blank', function( assert )
+{
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [
+            { uri: matrixHelpers.createUri( '/repo-a' ), name: 'repo-a' },
+            { uri: matrixHelpers.createUri( '/repo-b' ), name: 'repo-b' }
+        ],
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function() { return null; },
+            isNewTodo: function() { return true; },
+            refresh: function() { return Promise.resolve( { allFailed: false, noBranchRoots: [ '/repo-b' ] } ); }
+        },
+        configOverrides: {
+            newTodosGitBaseBranch: function() { return 'main'; },
+            resolveNewTodosGitBaseBranch: function( root )
+            {
+                return root === '/repo-a' ? 'main' : '';
+            }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.warningMessages.length, 1 );
         assert.equal(
             harness.warningMessages[ 0 ],
             'Better Todo Tree: no base branch set for new-todos filter (set filtering.newTodosGitBaseBranch)',
-            'warns with the new config-error copy'
+            'warns when at least one in-scope repo resolves blank'
         );
+    } );
+} );
+
+QUnit.test( 'new-todos filter does not warn when all in-scope repos resolve with only per-repo branches', function( assert )
+{
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [
+            { uri: matrixHelpers.createUri( '/repo-a' ), name: 'repo-a' },
+            { uri: matrixHelpers.createUri( '/repo-b' ), name: 'repo-b' }
+        ],
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function() { return null; },
+            isNewTodo: function() { return true; },
+            refresh: function() { return Promise.resolve( { allFailed: false, noBranchRoots: [] } ); }
+        },
+        configOverrides: {
+            newTodosGitBaseBranch: function() { return ''; },
+            resolveNewTodosGitBaseBranch: function() { return 'main'; }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.warningMessages.length, 0, 'no warning shown when all in-scope repos resolve' );
+    } );
+} );
+
+QUnit.test( 'enabling new-todos skips the prompt when at least one in-scope repo resolves a branch', function( assert )
+{
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [
+            { uri: matrixHelpers.createUri( '/repo-a' ), name: 'repo-a' },
+            { uri: matrixHelpers.createUri( '/repo-b' ), name: 'repo-b' }
+        ],
+        openTextDocuments: [
+            matrixHelpers.createDocument( '/repo-a/src/a.js', '// TODO a' ),
+            matrixHelpers.createDocument( '/repo-b/src/b.js', '// TODO b' )
+        ],
+        inputBoxResult: 'should-not-be-used',
+        configOverrides: {
+            shouldShowNewTodosOnly: function() { return false; },
+            newTodosGitBaseBranch: function() { return ''; },
+            resolveNewTodosGitBaseBranch: function( root )
+            {
+                return root === '/repo-a' ? 'main' : '';
+            }
+        },
+        gitStub: {
+            findRepoRoot: function( dir )
+            {
+                return Promise.resolve( dir.indexOf( '/repo-a/' ) === 0 ? '/repo-a' : '/repo-b' );
+            }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    harness.commands[ 'better-todo-tree.enableNewTodosOnly' ]();
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.inputBoxCalls.length, 0, 'no prompt shown' );
+        assert.equal( harness.workspaceStateUpdates.some( function( update )
+        {
+            return update.key === 'newTodosOnly' && update.value === true;
+        } ), true, 'records the newTodosOnly workspace-state update' );
+    } );
+} );
+
+QUnit.test( 'enabling new-todos prompts only when all in-scope repos resolve blank', function( assert )
+{
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [
+            { uri: matrixHelpers.createUri( '/repo-a' ), name: 'repo-a' },
+            { uri: matrixHelpers.createUri( '/repo-b' ), name: 'repo-b' }
+        ],
+        openTextDocuments: [
+            matrixHelpers.createDocument( '/repo-a/src/a.js', '// TODO a' ),
+            matrixHelpers.createDocument( '/repo-b/src/b.js', '// TODO b' )
+        ],
+        inputBoxResult: 'develop',
+        configOverrides: {
+            shouldShowNewTodosOnly: function() { return false; },
+            newTodosGitBaseBranch: function() { return ''; },
+            resolveNewTodosGitBaseBranch: function() { return ''; }
+        },
+        gitStub: {
+            findRepoRoot: function( dir )
+            {
+                return Promise.resolve( dir.indexOf( '/repo-a/' ) === 0 ? '/repo-a' : '/repo-b' );
+            }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    harness.commands[ 'better-todo-tree.enableNewTodosOnly' ]();
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.inputBoxCalls.length, 1, 'prompt shown once' );
+        assert.equal(
+            harness.inputBoxCalls[ 0 ].prompt,
+            'Git branch / revision to diff against (applies to all repos; for per-repo branches set filtering.newTodosGitBaseBranchPerRepo)'
+        );
+        assert.equal( harness.configurationUpdates.some( function( update )
+        {
+            return update.key === 'filtering.newTodosGitBaseBranch' &&
+                update.value === 'develop' &&
+                update.target === harness.vscode.ConfigurationTarget.Workspace;
+        } ), true, 'records the workspace base-branch configuration update' );
     } );
 } );
 

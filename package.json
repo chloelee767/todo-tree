@@ -1496,6 +1496,15 @@
                         "markdownDescription": "%newTodosGitBaseBranch.description%",
                         "scope": "resource"
                     },
+                    "better-todo-tree.filtering.newTodosGitBaseBranchPerRepo": {
+                        "type": "object",
+                        "default": {},
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "markdownDescription": "%newTodosGitBaseBranchPerRepo.description%",
+                        "scope": "resource"
+                    },
                     "todo-tree.filtering.newTodosGitBaseBranch": {
                         "type": "string",
                         "default": "",

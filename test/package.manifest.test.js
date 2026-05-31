@@ -176,6 +176,64 @@ QUnit.test( 'new filtering settings are declared under better-todo-tree only', f
     assert.equal( chineseNls[ 'newTodosGitTimeoutMs.description' ], '筛选打开文件时，首次触发 git 仓库发现和 diff 的最大等待时间（毫秒）。超时后，文件会先按 fail-open 或 fail-closed 状态显示，待 diff 完成后再修正。设为 0 可禁用超时（始终等待）。' );
 } );
 
+QUnit.test( 'per-repo new-todos base branch setting is current-namespace only', function( assert )
+{
+    var packageJson = readPackageJson();
+    var englishNls = readPackageNls( 'package.nls.json' );
+    var chineseNls = readPackageNls( 'package.nls.zh-cn.json' );
+    var perRepoSetting = getConfigurationProperty( 'better-todo-tree.filtering.newTodosGitBaseBranchPerRepo' );
+
+    function hasConfigurationProperty( propertyName, node )
+    {
+        if( node === undefined || node === null )
+        {
+            return false;
+        }
+
+        if( Array.isArray( node ) )
+        {
+            return node.some( function( entry )
+            {
+                return hasConfigurationProperty( propertyName, entry );
+            } );
+        }
+
+        if( typeof ( node ) !== 'object' )
+        {
+            return false;
+        }
+
+        if( node.properties && Object.prototype.hasOwnProperty.call( node.properties, propertyName ) )
+        {
+            return true;
+        }
+
+        return Object.keys( node ).some( function( key )
+        {
+            return hasConfigurationProperty( propertyName, node[ key ] );
+        } );
+    }
+
+    assert.ok( perRepoSetting, 'per-repo setting present' );
+    assert.strictEqual( perRepoSetting.type, 'object' );
+    assert.deepEqual( perRepoSetting.default, {} );
+    assert.deepEqual( perRepoSetting.additionalProperties, { type: 'string' } );
+    assert.strictEqual( perRepoSetting.scope, 'resource' );
+    assert.equal( perRepoSetting.markdownDescription, '%newTodosGitBaseBranchPerRepo.description%' );
+    assert.notOk(
+        hasConfigurationProperty( 'todo-tree.filtering.newTodosGitBaseBranchPerRepo', packageJson.contributes.configuration ),
+        'no legacy alias for per-repo setting'
+    );
+    assert.equal(
+        englishNls[ 'newTodosGitBaseBranchPerRepo.description' ],
+        'Per-repository version of #better-todo-tree.filtering.newTodosGitBaseBranch# setting. Keys are absolute paths to the git repo root; values are the git branch / revision. Falls back to #better-todo-tree.filtering.newTodosGitBaseBranch# when a repo is missing. Example: { "/home/me/code/repo-a": "main", "/home/me/code/repo-b": "develop" }'
+    );
+    assert.equal(
+        chineseNls[ 'newTodosGitBaseBranchPerRepo.description' ],
+        '#better-todo-tree.filtering.newTodosGitBaseBranch# 的按仓库版本。键为 git 仓库根目录的绝对路径，值为该仓库要对比的 git 分支或修订。仓库未配置时，会回退到 #better-todo-tree.filtering.newTodosGitBaseBranch#。示例：{ "/home/me/code/repo-a": "main", "/home/me/code/repo-b": "develop" }'
+    );
+} );
+
 QUnit.test( 'git executable setting is declared in a dedicated git section for current and legacy namespaces', function( assert )
 {
     var packageJson = readPackageJson();
@@ -361,17 +419,17 @@ QUnit.test( 'new todos context menu entries sit below scan mode in their own gro
         {
             command: 'better-todo-tree.enableNewTodosOnly',
             when: 'view =~ /todo-tree/ && better-todo-tree-new-todos-only == false',
-            group: '4-new-todos'
+            group: '4-new-todos@1'
         },
         {
             command: 'better-todo-tree.disableNewTodosOnly',
             when: 'view =~ /todo-tree/ && better-todo-tree-new-todos-only == true',
-            group: '4-new-todos'
+            group: '4-new-todos@2'
         },
         {
             command: 'better-todo-tree.newTodosChangeBranch',
             when: 'view =~ /todo-tree/ && better-todo-tree-new-todos-only == true',
-            group: '4-new-todos'
+            group: '4-new-todos@3'
         }
     ] );
     assert.equal( expandEntry.group, '5-tree@1' );

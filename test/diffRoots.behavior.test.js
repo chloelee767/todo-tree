@@ -19,6 +19,20 @@ QUnit.test( 'collectDiffRootsFrom: workspace-family seeds workspace roots + targ
     assert.deepEqual( roots.sort(), [ '/ext', '/ws' ], 'workspace root + external target repo' );
 } );
 
+QUnit.test( 'collectDiffRootsFrom: workspace-family resolves workspace subfolders to git repo roots', function( assert )
+{
+    var h = loadExtensionHelpers();
+    var revParse = { '/repo/subdir': '/repo' };
+    var roots = h.collectDiffRootsFrom(
+        'workspace',
+        [ '/repo/subdir' ],
+        [],
+        function( dir ) { return revParse[ dir ] || null; }
+    );
+
+    assert.deepEqual( roots, [ '/repo' ], 'workspace subfolder resolves to git repo root' );
+} );
+
 QUnit.test( 'collectDiffRootsFrom: open-files family does NOT seed workspace roots', function( assert )
 {
     var h = loadExtensionHelpers();

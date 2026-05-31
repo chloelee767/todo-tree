@@ -293,5 +293,6 @@
     "better-todo-tree.configuration.legacyNamespace.markdownDeprecationMessage": "旧版兼容设置。请改用对应的 `better-todo-tree.*` 设置。",
     "better-todo-tree.command.importLegacySettings.title": "导入旧版设置",
     "newTodosShowUndiffableFiles.description": "启用“仅显示新待办”后，如果某个文件无法执行 git diff（不在仓库中，或 diff 失败），则显示该文件中的所有待办事项（fail-open）。禁用后，则完全隐藏这类文件（fail-closed）。",
-    "newTodosGitTimeoutMs.description": "筛选打开文件时，首次触发 git 仓库发现和 diff 的最大等待时间（毫秒）。超时后，文件会先按 fail-open 或 fail-closed 状态显示，待 diff 完成后再修正。设为 0 可禁用超时（始终等待）。"
+    "newTodosGitTimeoutMs.description": "筛选打开文件时，首次触发 git 仓库发现和 diff 的最大等待时间（毫秒）。超时后，文件会先按 fail-open 或 fail-closed 状态显示，待 diff 完成后再修正。设为 0 可禁用超时（始终等待）。",
+    "newTodosGitBaseBranchPerRepo.description": "#better-todo-tree.filtering.newTodosGitBaseBranch# 的按仓库版本。键为 git 仓库根目录的绝对路径，值为该仓库要对比的 git 分支或修订。仓库未配置时，会回退到 #better-todo-tree.filtering.newTodosGitBaseBranch#。示例：{ \"/home/me/code/repo-a\": \"main\", \"/home/me/code/repo-b\": \"develop\" }"
 }

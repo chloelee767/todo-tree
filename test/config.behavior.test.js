@@ -8,6 +8,12 @@ function createVscodeStub( appRoot )
         env: {
             appRoot: appRoot
         },
+        Uri: {
+            file: function( fsPath )
+            {
+                return { fsPath: fsPath };
+            }
+        },
         workspace: {
             getConfiguration: function()
             {
@@ -46,7 +52,7 @@ function loadConfigModule( options )
             }
         },
         './extensionIdentity.js': {
-            getSetting: function( setting, defaultValue )
+            getSetting: function( setting, defaultValue, uri )
             {
                 if( setting === 'ripgrep.ripgrep' )
                 {
@@ -56,6 +62,22 @@ function loadConfigModule( options )
                 if( setting === 'git.path' )
                 {
                     return options.configuredGitPath !== undefined ? options.configuredGitPath : defaultValue;
+                }
+
+                if( setting === 'filtering.newTodosGitBaseBranch' )
+                {
+                    return options.newTodosGitBaseBranch !== undefined ? options.newTodosGitBaseBranch : defaultValue;
+                }
+
+                if( setting === 'filtering.newTodosGitBaseBranchPerRepo' )
+                {
+                    if( uri && uri.fsPath && options.newTodosGitBaseBranchPerRepoByUri &&
+                        Object.prototype.hasOwnProperty.call( options.newTodosGitBaseBranchPerRepoByUri, uri.fsPath ) )
+                    {
+                        return options.newTodosGitBaseBranchPerRepoByUri[ uri.fsPath ];
+                    }
+
+                    return options.newTodosGitBaseBranchPerRepo !== undefined ? options.newTodosGitBaseBranchPerRepo : defaultValue;
                 }
 
                 return defaultValue;
@@ -294,6 +316,28 @@ QUnit.test( 'newTodosGitBaseBranch returns the configured setting default', func
     assert.equal( config.newTodosGitBaseBranch(), '', 'defaults to empty string' );
 } );
 
+QUnit.test( 'newTodosGitBaseBranchPerRepo defaults to an empty map', function( assert )
+{
+    var config = loadConfigModule();
+    config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
+
+    assert.deepEqual( config.newTodosGitBaseBranchPerRepo(), {}, 'defaults to an empty map' );
+} );
+
+QUnit.test( 'newTodosGitBaseBranchPerRepo returns the configured setting map', function( assert )
+{
+    var config = loadConfigModule( {
+        newTodosGitBaseBranchPerRepo: {
+            '/workspace/repo-a': 'develop'
+        }
+    } );
+    config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
+
+    assert.deepEqual( config.newTodosGitBaseBranchPerRepo(), {
+        '/workspace/repo-a': 'develop'
+    }, 'returns the configured map' );
+} );
+
 QUnit.test( 'newTodosShowUndiffableFiles defaults to true', function( assert )
 {
     var config = loadConfigModule();
@@ -327,4 +371,92 @@ QUnit.test( 'shouldPassGlobsToGitDiff defaults to true', function( assert )
     var config = loadConfigModule();
     config.init( { workspaceState: { get: function( k, d ) { return d; } } } );
     assert.equal( config.shouldPassGlobsToGitDiff(), true, 'defaults to true' );
+} );
+
+QUnit.test( 'resolveNewTodosGitBaseBranch prefers the per-repo map entry', function( assert )
+{
+    var config = loadConfigModule( {
+        newTodosGitBaseBranch: 'main',
+        newTodosGitBaseBranchPerRepo: {
+            '/workspace/repo-a': 'develop'
+        }
+    } );
+
+    assert.equal( config.resolveNewTodosGitBaseBranch( '/workspace/repo-a' ), 'develop' );
+} );
+
+QUnit.test( 'resolveNewTodosGitBaseBranch falls back to the global branch when the repo is missing', function( assert )
+{
+    var config = loadConfigModule( {
+        newTodosGitBaseBranch: 'main',
+        newTodosGitBaseBranchPerRepo: {
+            '/workspace/repo-a': 'develop'
+        }
+    } );
+
+    assert.equal( config.resolveNewTodosGitBaseBranch( '/workspace/repo-b' ), 'main' );
+} );
+
+QUnit.test( 'resolveNewTodosGitBaseBranch treats a blank per-repo value as unset', function( assert )
+{
+    var config = loadConfigModule( {
+        newTodosGitBaseBranch: 'main',
+        newTodosGitBaseBranchPerRepo: {
+            '/workspace/repo-a': '   '
+        }
+    } );
+
+    assert.equal( config.resolveNewTodosGitBaseBranch( '/workspace/repo-a' ), 'main' );
+} );
+
+QUnit.test( 'resolveNewTodosGitBaseBranch returns blank when both per-repo and global branches are blank', function( assert )
+{
+    var config = loadConfigModule( {
+        newTodosGitBaseBranch: '',
+        newTodosGitBaseBranchPerRepo: {
+            '/workspace/repo-a': ''
+        }
+    } );
+
+    assert.equal( config.resolveNewTodosGitBaseBranch( '/workspace/repo-a' ), '' );
+} );
+
+QUnit.test( 'resolveNewTodosGitBaseBranch normalizes slash direction and Windows drive-letter case', function( assert )
+{
+    var config = loadConfigModule( {
+        newTodosGitBaseBranch: 'main',
+        newTodosGitBaseBranchPerRepo: {
+            'C:\\Repo': 'release',
+            'D:\\Work\\Tree': 'develop'
+        }
+    } );
+
+    assert.equal( config.resolveNewTodosGitBaseBranch( 'c:/repo' ), 'release' );
+    assert.equal( config.resolveNewTodosGitBaseBranch( 'd:/work/tree' ), 'develop' );
+} );
+
+QUnit.test( 'resolveNewTodosGitBaseBranch requires an exact normalized repo-root match', function( assert )
+{
+    var config = loadConfigModule( {
+        newTodosGitBaseBranch: 'main',
+        newTodosGitBaseBranchPerRepo: {
+            '/workspace/repo-a/subdir': 'develop'
+        }
+    } );
+
+    assert.equal( config.resolveNewTodosGitBaseBranch( '/workspace/repo-a' ), 'main' );
+} );
+
+QUnit.test( 'resolveNewTodosGitBaseBranch reads resource-scoped per-repo settings for the repo root', function( assert )
+{
+    var config = loadConfigModule( {
+        newTodosGitBaseBranch: 'main',
+        newTodosGitBaseBranchPerRepoByUri: {
+            '/workspace/repo-a': {
+                '/workspace/repo-a': 'develop'
+            }
+        }
+    } );
+
+    assert.equal( config.resolveNewTodosGitBaseBranch( '/workspace/repo-a' ), 'develop' );
 } );

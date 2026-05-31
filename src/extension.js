@@ -1933,7 +1933,7 @@ function activate( context )
             }
         }
 
-        return ensureRepoForFile( document.uri.fsPath, config.newTodosGitBaseBranch(), getGitDiffGlobs() ).then( function()
+        return ensureRepoForFile( document.uri.fsPath, config.resolveNewTodosGitBaseBranch, getGitDiffGlobs() ).then( function()
         {
             replaceSearchResults( document.uri, applyNewTodoFilterToResults( document.uri, getDocumentScanResults( document ) ), store );
         } );
@@ -1962,7 +1962,7 @@ function activate( context )
             }
         }
 
-        return ensureRepoForFile( notebook.uri.fsPath, config.newTodosGitBaseBranch(), getGitDiffGlobs() ).then( function()
+        return ensureRepoForFile( notebook.uri.fsPath, config.resolveNewTodosGitBaseBranch, getGitDiffGlobs() ).then( function()
         {
             replaceSearchResults( notebook.uri, applyNewTodoFilterToResults( notebook.uri, scanNotebookDocument( notebook ) ), store );
         } );
@@ -2383,9 +2383,9 @@ function activate( context )
         }
     }
 
-    function ensureRepoForFile( fsPath, branch, globs )
+    function ensureRepoForFile( fsPath, resolveBranch, globs )
     {
-        if( newTodoFilter.isEnabled() !== true || !branch || !fsPath )
+        if( newTodoFilter.isEnabled() !== true || !fsPath )
         {
             return Promise.resolve();
         }
@@ -2417,7 +2417,13 @@ function activate( context )
                 return;
             }
 
-            var extendPromise = newTodoFilter.extendForRepo( repoRoot, branch, globs );
+            var branch = resolveBranch( repoRoot );
+            if( !branch || String( branch ).trim() === '' )
+            {
+                return newTodoFilter.extendForRepo( repoRoot, resolveBranch, globs );
+            }
+
+            var extendPromise = newTodoFilter.extendForRepo( repoRoot, resolveBranch, globs );
             return raceWithTimeout( extendPromise, config.newTodosGitTimeoutMs(), function()
             {
                 reconcileFileAfterLateExtend( fsPath );
@@ -2554,13 +2560,13 @@ function activate( context )
         }
         return collectDiffRoots( searchList ).then( function( diffRoots )
         {
-            return newTodoFilter.refresh( config.newTodosGitBaseBranch(), diffRoots, getGitDiffGlobs() );
+            return newTodoFilter.refresh( config.resolveNewTodosGitBaseBranch, diffRoots, getGitDiffGlobs() );
         } ).then( function( summary )
         {
             var configuredBaseBranch = config.newTodosGitBaseBranch();
-            var missingBaseBranch = !configuredBaseBranch || String( configuredBaseBranch ).trim() === '';
+            var hasMissingResolvedBranch = summary && summary.noBranchRoots && summary.noBranchRoots.length > 0;
 
-            if( newTodoFilter.isEnabled() === true && missingBaseBranch === true )
+            if( newTodoFilter.isEnabled() === true && hasMissingResolvedBranch === true )
             {
                 vscode.window.showWarningMessage( identity.DISPLAY_NAME + ': no base branch set for new-todos filter (set filtering.newTodosGitBaseBranch)' );
             }
@@ -3878,7 +3884,10 @@ function activate( context )
         function promptForNewTodosBranch()
         {
             var current = config.newTodosGitBaseBranch();
-            return vscode.window.showInputBox( { prompt: "Git branch / revision to diff against", value: current } ).then( function( branch )
+            return vscode.window.showInputBox( {
+                prompt: 'Git branch / revision to diff against (applies to all repos; for per-repo branches set filtering.newTodosGitBaseBranchPerRepo)',
+                value: current
+            } ).then( function( branch )
             {
                 if( !branch )
                 {
@@ -3894,26 +3903,41 @@ function activate( context )
             var current = config.shouldShowNewTodosOnly();
             var turningOn = !current;
 
-            // Turning on with no base branch configured: prompt first (spec: error handling).
-            if( turningOn === true && !config.newTodosGitBaseBranch() )
+            if( turningOn !== true )
             {
-                promptForNewTodosBranch().then( function( didSet )
+                newTodoFilter.setEnabled( false );
+                context.workspaceState.update( 'newTodosOnly', false ).then( rebuild );
+                return;
+            }
+
+            collectDiffRoots( searchList ).then( function( diffRoots )
+            {
+                var allBlank = diffRoots.length > 0 && diffRoots.every( function( root )
+                {
+                    var branch = config.resolveNewTodosGitBaseBranch( root );
+                    return !branch || String( branch ).trim() === '';
+                } );
+
+                if( allBlank !== true )
+                {
+                    newTodoFilter.setEnabled( true );
+                    return context.workspaceState.update( 'newTodosOnly', true ).then( rebuild );
+                }
+
+                return promptForNewTodosBranch().then( function( didSet )
                 {
                     if( didSet !== true )
                     {
                         return;
                     }
-                    newTodoFilter.setEnabled( true );
-                    context.workspaceState.update( 'newTodosOnly', true ).then( rebuild );
-                } ).catch( function( err )
-                {
-                    vscode.window.showErrorMessage( identity.DISPLAY_NAME + ": failed to set base branch (" + err.message + ")" );
-                } );
-                return;
-            }
 
-            newTodoFilter.setEnabled( turningOn );
-            context.workspaceState.update( 'newTodosOnly', turningOn ).then( rebuild );
+                    newTodoFilter.setEnabled( true );
+                    return context.workspaceState.update( 'newTodosOnly', true ).then( rebuild );
+                } );
+            } ).catch( function( err )
+            {
+                vscode.window.showErrorMessage( identity.DISPLAY_NAME + ': failed to set base branch (' + err.message + ')' );
+            } );
         }
 
         registerCommandPair( 'enableNewTodosOnly', doToggleNewTodosOnly );

@@ -3,14 +3,13 @@ var git = require( './git.js' );
 
 var debug = function() {};
 var enabled = false;
-var baseBranch = '';
 var rangesByPath = new Map();
 var coveredRoots = [];
 var failedRoots = [];
+var noBranchRoots = [];
 var pendingRepoExtends = new Map();
 var refreshGeneration = 0;
 var showUndiffableFiles = true;
-var missingBranch = false;
 
 function isBlankBranch( branch )
 {
@@ -82,12 +81,18 @@ function classifyUndiffable( fsPath )
     {
         return null;
     }
-    if( missingBranch === true )
+
+    var noBranchOwning = findOwningRoot( fsPath, noBranchRoots );
+    var coveredOwning = findOwningRoot( fsPath, coveredRoots );
+    var failedOwning = findOwningRoot( fsPath, failedRoots );
+
+    if( noBranchOwning !== undefined &&
+        ( coveredOwning === undefined || noBranchOwning.length >= coveredOwning.length ) &&
+        ( failedOwning === undefined || noBranchOwning.length >= failedOwning.length ) )
     {
         return 'no-branch';
     }
-    var coveredOwning = findOwningRoot( fsPath, coveredRoots );
-    var failedOwning = findOwningRoot( fsPath, failedRoots );
+
     if( coveredOwning !== undefined && ( failedOwning === undefined || coveredOwning.length >= failedOwning.length ) )
     {
         return null;
@@ -119,33 +124,53 @@ function isNewTodo( fsPath, line )
     return showUndiffableFiles === true;
 }
 
-function refresh( branch, roots, globs )
+function refresh( resolveBranch, roots, globs )
 {
-    baseBranch = branch;
-    missingBranch = enabled === true && isBlankBranch( branch );
     refreshGeneration += 1;
     var generation = refreshGeneration;
     pendingRepoExtends = new Map();
 
-    if( enabled !== true || isBlankBranch( branch ) || !roots || roots.length === 0 )
+    if( enabled !== true || !roots || roots.length === 0 )
     {
         rangesByPath = new Map();
         coveredRoots = [];
         failedRoots = [];
-        return Promise.resolve( { allFailed: false } );
+        noBranchRoots = [];
+        return Promise.resolve( { allFailed: false, noBranchRoots: [] } );
     }
 
     var include = ( globs && globs.include ) || [];
     var exclude = ( globs && globs.exclude ) || [];
-
-    return Promise.all( roots.map( function( root )
+    var blankRoots = [];
+    var diffableRoots = roots.filter( function( root )
     {
+        var branch = resolveBranch( root );
+        if( isBlankBranch( branch ) )
+        {
+            blankRoots.push( root );
+            return false;
+        }
+        return true;
+    } );
+
+    if( diffableRoots.length === 0 )
+    {
+        rangesByPath = new Map();
+        coveredRoots = [];
+        failedRoots = [];
+        noBranchRoots = blankRoots;
+        return Promise.resolve( { allFailed: false, noBranchRoots: blankRoots.slice() } );
+    }
+
+    return Promise.all( diffableRoots.map( function( root )
+    {
+        var branch = resolveBranch( root );
         var diffPromise = git.getChangedFilesAndLines( branch, root, include, exclude )
-            .then( function( map ) { return { map: map, ok: true }; } )
+            .then( function( map ) { return { map: map, ok: true, branch: branch }; } )
             .catch( function( error )
             {
                 debug( 'newTodoFilter: diff failed for ' + root + ': ' + error.message );
-                return { map: new Map(), ok: false };
+                return { map: new Map(), ok: false, branch: branch };
             } );
         var untrackedPromise = git.getUntrackedFiles( root, include, exclude )
             .catch( function( error )
@@ -161,7 +186,7 @@ function refresh( branch, roots, globs )
     {
         if( generation !== refreshGeneration )
         {
-            return { allFailed: false };
+            return { allFailed: false, noBranchRoots: [] };
         }
 
         var next = new Map();
@@ -189,16 +214,22 @@ function refresh( branch, roots, globs )
         rangesByPath = next;
         coveredRoots = nextCovered;
         failedRoots = nextFailed;
-        return { allFailed: results.length > 0 && results.every( function( r ) { return r.ok === false; } ) };
+        noBranchRoots = blankRoots;
+        return {
+            allFailed: results.length > 0 && results.every( function( r ) { return r.ok === false; } ),
+            noBranchRoots: blankRoots.slice()
+        };
     } );
 }
 
 function isOwningRepoKnown( repoRoot )
 {
-    return coveredRoots.indexOf( repoRoot ) !== -1 || failedRoots.indexOf( repoRoot ) !== -1;
+    return coveredRoots.indexOf( repoRoot ) !== -1 ||
+        failedRoots.indexOf( repoRoot ) !== -1 ||
+        noBranchRoots.indexOf( repoRoot ) !== -1;
 }
 
-function extendForRepo( repoRoot, branch, globs )
+function extendForRepo( repoRoot, resolveBranch, globs )
 {
     if( !repoRoot || isOwningRepoKnown( repoRoot ) )
     {
@@ -212,6 +243,13 @@ function extendForRepo( repoRoot, branch, globs )
         {
             return pendingExtend.promise;
         }
+    }
+
+    var branch = resolveBranch( repoRoot );
+    if( isBlankBranch( branch ) )
+    {
+        noBranchRoots.push( repoRoot );
+        return Promise.resolve();
     }
 
     var generation = refreshGeneration;

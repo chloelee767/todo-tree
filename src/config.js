@@ -2,6 +2,7 @@ var vscode = require( 'vscode' );
 var fs = require( 'fs' );
 var path = require( 'path' );
 var attributes = require( './attributes.js' );
+var diffRootsHelper = require( './diffRootsHelper.js' );
 var identity = require( './extensionIdentity.js' );
 
 var context;
@@ -413,6 +414,33 @@ function newTodosGitBaseBranch()
     return identity.getSetting( 'filtering.newTodosGitBaseBranch', '' );
 }
 
+function newTodosGitBaseBranchPerRepo( uri )
+{
+    return identity.getSetting( 'filtering.newTodosGitBaseBranchPerRepo', {}, uri ) || {};
+}
+
+function resolveNewTodosGitBaseBranch( repoRoot )
+{
+    var map = newTodosGitBaseBranchPerRepo( repoRoot ? vscode.Uri.file( repoRoot ) : undefined );
+    var target = diffRootsHelper.normalizePath( repoRoot );
+    var matched = '';
+
+    Object.keys( map ).forEach( function( key )
+    {
+        if( diffRootsHelper.normalizePath( key ) === target )
+        {
+            matched = map[ key ];
+        }
+    } );
+
+    if( matched && String( matched ).trim() !== '' )
+    {
+        return matched;
+    }
+
+    return newTodosGitBaseBranch();
+}
+
 function newTodosShowUndiffableFiles()
 {
     return identity.getSetting( 'filtering.newTodosShowUndiffableFiles', true );
@@ -480,6 +508,8 @@ module.exports.subTagClickUrl = subTagClickUrl;
 module.exports.shouldShowIconsInsteadOfTagsInStatusBar = shouldShowIconsInsteadOfTagsInStatusBar;
 module.exports.shouldShowActivityBarBadge = shouldShowActivityBarBadge;
 module.exports.newTodosGitBaseBranch = newTodosGitBaseBranch;
+module.exports.newTodosGitBaseBranchPerRepo = newTodosGitBaseBranchPerRepo;
+module.exports.resolveNewTodosGitBaseBranch = resolveNewTodosGitBaseBranch;
 module.exports.newTodosShowUndiffableFiles = newTodosShowUndiffableFiles;
 module.exports.newTodosGitTimeoutMs = newTodosGitTimeoutMs;
 module.exports.gitPath = gitPath;

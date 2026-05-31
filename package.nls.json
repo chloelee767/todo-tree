@@ -296,6 +296,7 @@
     "newTodosShowUndiffableFiles.description": "When 'new todos only' is enabled and a file can't be git-diffed (not in a repo, or the diff failed), show all its todos (fail-open). When disabled, hide such files entirely (fail-closed).",
     "newTodosGitTimeoutMs.description": "Maximum time (ms) to wait for first-touch git repo discovery + diff when filtering an open file. On timeout, the file is shown in its fail-open/fail-closed state, then corrected when the diff resolves. 0 disables the timeout (always wait).",
     "newTodosGitBaseBranch.description": "Git branch or revision to diff against when 'new todos only' mode is enabled. Only TODOs on lines changed relative to this ref are shown.",
+    "newTodosGitBaseBranchPerRepo.description": "Per-repository version of #better-todo-tree.filtering.newTodosGitBaseBranch# setting. Keys are absolute paths to the git repo root; values are the git branch / revision. Falls back to #better-todo-tree.filtering.newTodosGitBaseBranch# when a repo is missing. Example: { \"/home/me/code/repo-a\": \"main\", \"/home/me/code/repo-b\": \"develop\" }",
     "passGlobsToGitDiff.description": "Apply the configured include/exclude globs to the git diff used by 'new todos only' mode.",
     "treeButtons.newTodosOnly": "Show a tree view button to toggle 'new todos only' mode.",
     "better-todo-tree.command.enableNewTodosOnly.title": "Show New Todos Only",

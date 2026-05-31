@@ -12,6 +12,14 @@ function loadFilter( gitStub )
     } );
 }
 
+function constantBranch( branch )
+{
+    return function()
+    {
+        return branch;
+    };
+}
+
 QUnit.module( 'behavioral newTodoFilter' );
 
 QUnit.test( 'isNewTodo: absent file with no owning root is controlled by fail-open/closed', function( assert )
@@ -33,7 +41,7 @@ QUnit.test( 'isNewTodo: line inside a range returns true, outside returns false'
     } );
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( 'main', [ '/repo' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( 'main' ), [ '/repo' ], { include: [], exclude: [] } ).then( function()
     {
         var p = path.join( '/repo', 'a.js' );
         assert.equal( f.isNewTodo( p, 4 ), false, 'line before range' );
@@ -54,7 +62,7 @@ QUnit.test( 'refresh: disabled produces empty map', function( assert )
     f.init( function() {} );
     f.setEnabled( false );
     f.setShowUndiffableFiles( false );
-    f.refresh( 'main', [ '/repo' ], { include: [], exclude: [] } ).then( function( summary )
+    f.refresh( constantBranch( 'main' ), [ '/repo' ], { include: [], exclude: [] } ).then( function( summary )
     {
         assert.equal( f.isNewTodo( path.join( '/repo', 'a.js' ), 1 ), false, 'disabled => no ranges' );
         assert.equal( summary && summary.allFailed, false, 'allFailed false when disabled' );
@@ -75,7 +83,7 @@ QUnit.test( 'refresh: one failing root does not discard another root, reports al
     } );
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( 'main', [ '/good', '/bad' ], { include: [], exclude: [] } ).then( function( summary )
+    f.refresh( constantBranch( 'main' ), [ '/good', '/bad' ], { include: [], exclude: [] } ).then( function( summary )
     {
         assert.equal( f.isNewTodo( path.join( '/good', 'good.js' ), 2 ), true, 'good root preserved' );
         assert.equal( summary.allFailed, false, 'not all failed' );
@@ -92,7 +100,7 @@ QUnit.test( 'refresh: all roots failing reports allFailed=true', function( asser
     } );
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( 'nope', [ '/a', '/b' ], { include: [], exclude: [] } ).then( function( summary )
+    f.refresh( constantBranch( 'nope' ), [ '/a', '/b' ], { include: [], exclude: [] } ).then( function( summary )
     {
         assert.equal( summary.allFailed, true, 'all roots failed' );
         done();
@@ -114,7 +122,7 @@ QUnit.test( 'refresh: enabled + empty branch classifies absent files as no-branc
     var f = loadFilter();
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( '', [ '/repo' ], { include: [], exclude: [] } ).then( function( summary )
+    f.refresh( constantBranch( '' ), [ '/repo' ], { include: [], exclude: [] } ).then( function( summary )
     {
         assert.equal( summary.allFailed, false, 'blank branch does not report git failures' );
         assert.equal( f.classifyUndiffable( '/repo/a.js' ), 'no-branch', 'blank branch is a config error' );
@@ -128,7 +136,7 @@ QUnit.test( 'refresh: enabled + whitespace-only branch also classifies as no-bra
     var f = loadFilter();
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( '   ', [ '/repo' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( '   ' ), [ '/repo' ], { include: [], exclude: [] } ).then( function()
     {
         assert.equal( f.classifyUndiffable( '/repo/a.js' ), 'no-branch', 'whitespace is treated as missing' );
         done();
@@ -141,7 +149,7 @@ QUnit.test( 'isNewTodo: no-branch still obeys fail-open and fail-closed', functi
     var f = loadFilter();
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( '', [ '/repo' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( '' ), [ '/repo' ], { include: [], exclude: [] } ).then( function()
     {
         f.setShowUndiffableFiles( true );
         assert.equal( f.isNewTodo( '/repo/a.js', 1 ), true, 'fail-open keeps the todo' );
@@ -160,10 +168,10 @@ QUnit.test( 'refresh: non-empty branch clears no-branch state', function( assert
     } );
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( '', [ '/repo' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( '' ), [ '/repo' ], { include: [], exclude: [] } ).then( function()
     {
         assert.equal( f.classifyUndiffable( '/repo/a.js' ), 'no-branch', 'sanity check: first refresh sets no-branch' );
-        return f.refresh( 'main', [ '/repo' ], { include: [], exclude: [] } );
+        return f.refresh( constantBranch( 'main' ), [ '/repo' ], { include: [], exclude: [] } );
     } ).then( function()
     {
         assert.notEqual( f.classifyUndiffable( '/repo/a.js' ), 'no-branch', 'next refresh recomputes state and clears no-branch' );
@@ -186,7 +194,7 @@ QUnit.test( 'owning-root: longest prefix wins (nested covered beats covered ance
     } );
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( 'main', [ '/outer', '/outer/inner' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( 'main' ), [ '/outer', '/outer/inner' ], { include: [], exclude: [] } ).then( function()
     {
         assert.equal( f.classifyUndiffable( '/outer/inner/b.js' ), null, 'owning root is covered -> diffable' );
         done();
@@ -212,7 +220,7 @@ QUnit.test( 'refresh: covered root recorded; failed diff -> failedRoots; untrack
     } );
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( 'main', [ '/good', '/bad' ], { include: [], exclude: [] } ).then( function( summary )
+    f.refresh( constantBranch( 'main' ), [ '/good', '/bad' ], { include: [], exclude: [] } ).then( function( summary )
     {
         assert.equal( summary.allFailed, false, 'one root succeeded' );
         assert.equal( f.classifyUndiffable( path.join( '/good', 'unchanged.js' ) ), null, '/good covered' );
@@ -234,7 +242,7 @@ QUnit.test( 'isNewTodo three cases: in-range / unchanged-in-covered / undiffable
     f.init( function() {} );
     f.setEnabled( true );
     f.setShowUndiffableFiles( true );
-    f.refresh( 'main', [ '/repo' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( 'main' ), [ '/repo' ], { include: [], exclude: [] } ).then( function()
     {
         var changed = path.join( '/repo', 'changed.js' );
         var unchanged = path.join( '/repo', 'unchanged.js' );
@@ -265,7 +273,7 @@ QUnit.test( 'isNewTodo E9b: failed owning repo under covered ancestor -> fail-op
     f.init( function() {} );
     f.setEnabled( true );
     f.setShowUndiffableFiles( false );
-    f.refresh( 'main', [ '/outer', '/outer/inner' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( 'main' ), [ '/outer', '/outer/inner' ], { include: [], exclude: [] } ).then( function()
     {
         assert.equal( f.classifyUndiffable( '/outer/inner/x.js' ), 'diff-failed', 'owning failed repo wins over covered ancestor' );
         assert.equal( f.isNewTodo( '/outer/inner/x.js', 3 ), false, 'fail-closed drops diff-failed file' );
@@ -289,15 +297,15 @@ QUnit.test( 'extendForRepo: merges ranges without clobbering, idempotent, routes
     } );
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( 'main', [ '/r0' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( 'main' ), [ '/r0' ], { include: [], exclude: [] } ).then( function()
     {
         assert.equal( f.isOwningRepoKnown( '/r1' ), false, 'not known before extend' );
-        return f.extendForRepo( '/r1', 'main', { include: [], exclude: [] } );
+        return f.extendForRepo( '/r1', constantBranch( 'main' ), { include: [], exclude: [] } );
     } ).then( function()
     {
         assert.equal( f.isNewTodo( path.join( '/r1', 'a.js' ), 1 ), true, 'merged range present' );
         assert.equal( f.isOwningRepoKnown( '/r1' ), true, 'known after extend' );
-        return f.extendForRepo( '/r2', 'main', { include: [], exclude: [] } );
+        return f.extendForRepo( '/r2', constantBranch( 'main' ), { include: [], exclude: [] } );
     } ).then( function()
     {
         assert.equal( f.classifyUndiffable( '/r2/x.js' ), 'diff-failed', 'failed extend -> failedRoots' );
@@ -317,11 +325,11 @@ QUnit.test( 'extendForRepo: concurrent calls for same repo do not double-add roo
     } );
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( 'main', [ '/r0' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( 'main' ), [ '/r0' ], { include: [], exclude: [] } ).then( function()
     {
         return Promise.all( [
-            f.extendForRepo( '/r1', 'main', { include: [], exclude: [] } ),
-            f.extendForRepo( '/r1', 'main', { include: [], exclude: [] } )
+            f.extendForRepo( '/r1', constantBranch( 'main' ), { include: [], exclude: [] } ),
+            f.extendForRepo( '/r1', constantBranch( 'main' ), { include: [], exclude: [] } )
         ] );
     } ).then( function()
     {
@@ -364,10 +372,10 @@ QUnit.test( 'extendForRepo: stale in-flight extend does not leak into newer refr
 
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( 'main', [ '/base' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( 'main' ), [ '/base' ], { include: [], exclude: [] } ).then( function()
     {
-        var staleExtend = f.extendForRepo( '/late', 'main', { include: [], exclude: [] } );
-        return f.refresh( 'main', [ '/fresh' ], { include: [], exclude: [] } ).then( function()
+        var staleExtend = f.extendForRepo( '/late', constantBranch( 'main' ), { include: [], exclude: [] } );
+        return f.refresh( constantBranch( 'main' ), [ '/fresh' ], { include: [], exclude: [] } ).then( function()
         {
             releaseExtend();
             return staleExtend;
@@ -416,12 +424,12 @@ QUnit.test( 'extendForRepo: newer refresh does not reuse stale pending promise f
 
     f.init( function() {} );
     f.setEnabled( true );
-    f.refresh( 'main', [ '/base' ], { include: [], exclude: [] } ).then( function()
+    f.refresh( constantBranch( 'main' ), [ '/base' ], { include: [], exclude: [] } ).then( function()
     {
-        var staleExtend = f.extendForRepo( '/same', 'main', { include: [], exclude: [] } );
-        return f.refresh( 'main', [ '/base' ], { include: [], exclude: [] } ).then( function()
+        var staleExtend = f.extendForRepo( '/same', constantBranch( 'main' ), { include: [], exclude: [] } );
+        return f.refresh( constantBranch( 'main' ), [ '/base' ], { include: [], exclude: [] } ).then( function()
         {
-            return f.extendForRepo( '/same', 'main', { include: [], exclude: [] } ).then( function()
+            return f.extendForRepo( '/same', constantBranch( 'main' ), { include: [], exclude: [] } ).then( function()
             {
                 releaseFirstExtend();
                 return staleExtend;
@@ -432,6 +440,98 @@ QUnit.test( 'extendForRepo: newer refresh does not reuse stale pending promise f
         assert.equal( calls, 4, 'current generation issues a fresh extend call instead of reusing stale promise' );
         assert.equal( f.isOwningRepoKnown( '/same' ), true, 'repo becomes known for the current generation' );
         assert.equal( f.isNewTodo( path.join( '/same', 'fresh.js' ), 2 ), true, 'fresh extend results are applied' );
+        done();
+    } );
+} );
+
+QUnit.test( 'refresh resolves branches per root and marks only blank roots as no-branch', function( assert )
+{
+    var done = assert.async();
+    var diffCalls = [];
+    var f = loadFilter( {
+        getChangedFilesAndLines: function( branch, root )
+        {
+            diffCalls.push( { branch: branch, root: root } );
+            return Promise.resolve( new Map() );
+        },
+        getUntrackedFiles: function() { return Promise.resolve( [] ); }
+    } );
+
+    f.init( function() {} );
+    f.setEnabled( true );
+
+    f.refresh( function( root )
+    {
+        if( root === '/mapped' ) { return 'develop'; }
+        if( root === '/fallback' ) { return 'main'; }
+        return '';
+    }, [ '/mapped', '/fallback', '/blank' ], { include: [], exclude: [] } ).then( function( summary )
+    {
+        assert.equal( summary.allFailed, false );
+        assert.deepEqual( diffCalls, [
+            { branch: 'develop', root: '/mapped' },
+            { branch: 'main', root: '/fallback' }
+        ] );
+        assert.equal( f.classifyUndiffable( '/blank/file.js' ), 'no-branch' );
+        assert.equal( f.classifyUndiffable( '/mapped/file.js' ), null );
+        done();
+    } );
+} );
+
+QUnit.test( 'extendForRepo resolves the branch lazily for a discovered repo', function( assert )
+{
+    var done = assert.async();
+    var seen = [];
+    var f = loadFilter( {
+        getChangedFilesAndLines: function( branch, root )
+        {
+            seen.push( { branch: branch, root: root } );
+            return Promise.resolve( new Map( [ [ 'a.js', [ [ 1, 1 ] ] ] ] ) );
+        },
+        getUntrackedFiles: function() { return Promise.resolve( [] ); }
+    } );
+
+    f.init( function() {} );
+    f.setEnabled( true );
+
+    f.refresh( function() { return 'main'; }, [ '/existing' ], { include: [], exclude: [] } ).then( function()
+    {
+        return f.extendForRepo( '/mapped', function( root )
+        {
+            return root === '/mapped' ? 'release' : 'main';
+        }, { include: [], exclude: [] } );
+    } ).then( function()
+    {
+        assert.deepEqual( seen[ seen.length - 1 ], { branch: 'release', root: '/mapped' } );
+        assert.equal( f.isNewTodo( path.join( '/mapped', 'a.js' ), 1 ), true );
+        done();
+    } );
+} );
+
+QUnit.test( 'extendForRepo marks blank-resolving repos as known no-branch without running git', function( assert )
+{
+    var done = assert.async();
+    var diffCalls = 0;
+    var f = loadFilter( {
+        getChangedFilesAndLines: function()
+        {
+            diffCalls++;
+            return Promise.resolve( new Map() );
+        },
+        getUntrackedFiles: function() { return Promise.resolve( [] ); }
+    } );
+
+    f.init( function() {} );
+    f.setEnabled( true );
+
+    f.refresh( function() { return 'main'; }, [ '/existing' ], { include: [], exclude: [] } ).then( function()
+    {
+        return f.extendForRepo( '/blank', function() { return '   '; }, { include: [], exclude: [] } );
+    } ).then( function()
+    {
+        assert.equal( diffCalls, 1, 'only the initial refresh root ran git' );
+        assert.equal( f.isOwningRepoKnown( '/blank' ), true, 'blank repo recorded as known' );
+        assert.equal( f.classifyUndiffable( '/blank/a.js' ), 'no-branch' );
         done();
     } );
 } );

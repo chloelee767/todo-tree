@@ -55,7 +55,10 @@ function collectDiffRootsFrom( scanMode, workspaceRoots, targetDirs, revParse )
 
     if( isWorkspaceFamily( scanMode ) )
     {
-        roots = roots.concat( workspaceRoots );
+        roots = roots.concat( workspaceRoots.map( function( root )
+        {
+            return revParse( root ) || root;
+        } ) );
     }
 
     targetDirs.forEach( function( dir )
@@ -74,5 +77,6 @@ function collectDiffRootsFrom( scanMode, workspaceRoots, targetDirs, revParse )
 module.exports.WORKSPACE_FAMILY = WORKSPACE_FAMILY;
 module.exports.isWorkspaceFamily = isWorkspaceFamily;
 module.exports.excludesExternalTargets = excludesExternalTargets;
+module.exports.normalizePath = normalizePath;
 module.exports.dedupe = dedupe;
 module.exports.collectDiffRootsFrom = collectDiffRootsFrom;
