@@ -273,59 +273,74 @@
                     "group": "3-view"
                 },
                 {
+                    "command": "better-todo-tree.enableNewTodosOnly",
+                    "when": "view =~ /todo-tree/ && better-todo-tree-new-todos-only == false",
+                    "group": "4-new-todos@1"
+                },
+                {
+                    "command": "better-todo-tree.disableNewTodosOnly",
+                    "when": "view =~ /todo-tree/ && better-todo-tree-new-todos-only == true",
+                    "group": "4-new-todos@2"
+                },
+                {
+                    "command": "better-todo-tree.newTodosChangeBranch",
+                    "when": "view =~ /todo-tree/ && better-todo-tree-new-todos-only == true",
+                    "group": "4-new-todos@3"
+                },
+                {
                     "command": "better-todo-tree.expand",
                     "when": "view =~ /todo-tree/ && better-todo-tree-expanded == false",
-                    "group": "4-tree@1"
+                    "group": "5-tree@1"
                 },
                 {
                     "command": "better-todo-tree.collapse",
                     "when": "view =~ /todo-tree/ && better-todo-tree-expanded == true",
-                    "group": "4-tree@1"
+                    "group": "5-tree@1"
                 },
                 {
                     "command": "better-todo-tree.showFlatView",
                     "when": "view =~ /todo-tree/ && better-todo-tree-flat == false",
-                    "group": "4-tree@2"
+                    "group": "5-tree@2"
                 },
                 {
                     "command": "better-todo-tree.showTagsOnlyView",
                     "when": "view =~ /todo-tree/ && better-todo-tree-tags-only == false",
-                    "group": "4-tree@3"
+                    "group": "5-tree@3"
                 },
                 {
                     "command": "better-todo-tree.showTreeView",
                     "when": "view =~ /todo-tree/ && (better-todo-tree-flat == true || better-todo-tree-tags-only == true)",
-                    "group": "4-tree@4"
+                    "group": "5-tree@4"
                 },
                 {
                     "command": "better-todo-tree.groupByTag",
                     "when": "view =~ /todo-tree/ && better-todo-tree-grouped-by-tag == false",
-                    "group": "4-tree@5"
+                    "group": "5-tree@5"
                 },
                 {
                     "command": "better-todo-tree.ungroupByTag",
                     "when": "view =~ /todo-tree/ && better-todo-tree-grouped-by-tag == true",
-                    "group": "4-tree@5"
+                    "group": "5-tree@5"
                 },
                 {
                     "command": "better-todo-tree.groupBySubTag",
                     "when": "view =~ /todo-tree/ && better-todo-tree-grouped-by-sub-tag == false && better-todo-tree-has-sub-tags == true",
-                    "group": "4-tree@6"
+                    "group": "5-tree@6"
                 },
                 {
                     "command": "better-todo-tree.ungroupBySubTag",
                     "when": "view =~ /todo-tree/ && better-todo-tree-grouped-by-sub-tag == true && better-todo-tree-has-sub-tags == true",
-                    "group": "4-tree@6"
+                    "group": "5-tree@6"
                 },
                 {
                     "command": "better-todo-tree.exportTree",
                     "when": "view =~/todo-tree/",
-                    "group": "5-misc1"
+                    "group": "6-misc1"
                 },
                 {
                     "command": "better-todo-tree.reveal",
                     "when": "view =~/todo-tree/",
-                    "group": "6-misc2"
+                    "group": "7-misc2"
                 }
             ],
             "commandPalette": [

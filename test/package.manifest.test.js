@@ -292,6 +292,53 @@ QUnit.test( 'scan mode toolbar cycle includes open files in workspace and contex
     } );
 } );
 
+QUnit.test( 'new todos context menu entries sit below scan mode in their own group', function( assert )
+{
+    var packageJson = readPackageJson();
+    var contextMenu = packageJson.contributes.menus[ 'view/item/context' ];
+    var newTodosEntries = contextMenu.filter( function( entry )
+    {
+        return [
+            'better-todo-tree.enableNewTodosOnly',
+            'better-todo-tree.disableNewTodosOnly',
+            'better-todo-tree.newTodosChangeBranch'
+        ].indexOf( entry.command ) !== -1;
+    } );
+    var expandEntry = contextMenu.find( function( entry )
+    {
+        return entry.command === 'better-todo-tree.expand';
+    } );
+    var exportEntry = contextMenu.find( function( entry )
+    {
+        return entry.command === 'better-todo-tree.exportTree';
+    } );
+    var revealEntry = contextMenu.find( function( entry )
+    {
+        return entry.command === 'better-todo-tree.reveal';
+    } );
+
+    assert.deepEqual( newTodosEntries, [
+        {
+            command: 'better-todo-tree.enableNewTodosOnly',
+            when: 'view =~ /todo-tree/ && better-todo-tree-new-todos-only == false',
+            group: '4-new-todos'
+        },
+        {
+            command: 'better-todo-tree.disableNewTodosOnly',
+            when: 'view =~ /todo-tree/ && better-todo-tree-new-todos-only == true',
+            group: '4-new-todos'
+        },
+        {
+            command: 'better-todo-tree.newTodosChangeBranch',
+            when: 'view =~ /todo-tree/ && better-todo-tree-new-todos-only == true',
+            group: '4-new-todos'
+        }
+    ] );
+    assert.equal( expandEntry.group, '5-tree@1' );
+    assert.equal( exportEntry.group, '6-misc1' );
+    assert.equal( revealEntry.group, '7-misc2' );
+} );
+
 QUnit.test( 'busy and composite tree commands have localization entries in both english and zh-cn bundles', function( assert )
 {
     var english = readPackageNls( 'package.nls.json' );
