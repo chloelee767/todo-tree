@@ -24,3 +24,7 @@ buildCodiconNames.js
 old-*.js
 *.bak
 *~
+.claude/
+.worktrees/
+docs/
+*.vsix
