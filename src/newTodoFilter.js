@@ -7,6 +7,7 @@ var rangesByPath = new Map();
 var coveredRoots = [];
 var failedRoots = [];
 var noBranchRoots = [];
+var onBaseBranchRoots = [];
 var pendingRepoExtends = new Map();
 var refreshGeneration = 0;
 var showUndiffableFiles = true;
@@ -75,9 +76,24 @@ function setShowUndiffableFiles( value )
     showUndiffableFiles = value === true;
 }
 
+function resolveBranchForRoot( resolveBranch, root )
+{
+    if( typeof resolveBranch === 'function' )
+    {
+        return resolveBranch( root );
+    }
+
+    return resolveBranch;
+}
+
 function classifyUndiffable( fsPath )
 {
     if( rangesByPath.get( fsPath ) )
+    {
+        return null;
+    }
+
+    if( isOnBaseBranch( fsPath ) )
     {
         return null;
     }
@@ -104,6 +120,23 @@ function classifyUndiffable( fsPath )
     return 'no-repo';
 }
 
+function isOnBaseBranch( fsPath )
+{
+    var onBaseOwning = findOwningRoot( fsPath, onBaseBranchRoots );
+    var coveredOwning = findOwningRoot( fsPath, coveredRoots );
+    var failedOwning = findOwningRoot( fsPath, failedRoots );
+    var noBranchOwning = findOwningRoot( fsPath, noBranchRoots );
+
+    if( onBaseOwning === undefined )
+    {
+        return false;
+    }
+
+    return ( coveredOwning === undefined || onBaseOwning.length >= coveredOwning.length ) &&
+        ( failedOwning === undefined || onBaseOwning.length >= failedOwning.length ) &&
+        ( noBranchOwning === undefined || onBaseOwning.length >= noBranchOwning.length );
+}
+
 function isNewTodo( fsPath, line )
 {
     var ranges = rangesByPath.get( fsPath );
@@ -116,12 +149,60 @@ function isNewTodo( fsPath, line )
         } );
     }
 
+    if( isOnBaseBranch( fsPath ) )
+    {
+        return false;
+    }
+
     if( classifyUndiffable( fsPath ) === null )
     {
         return false;
     }
 
     return showUndiffableFiles === true;
+}
+
+function loadDiffStateForRoot( root, branch, include, exclude )
+{
+    return Promise.resolve().then( function()
+    {
+        return git.getCurrentBranch( root );
+    } ).then( function( currentBranch )
+    {
+        if( !isBlankBranch( currentBranch ) && currentBranch === branch )
+        {
+            return { root: root, map: new Map(), ok: true, untracked: [], onBaseBranch: true };
+        }
+    } ).catch( function( error )
+    {
+        debug( 'newTodoFilter: current branch lookup failed for ' + root + ': ' + error.message );
+        return null;
+    } ).then( function( currentState )
+    {
+        if( currentState )
+        {
+            return currentState;
+        }
+
+        var diffPromise = git.getChangedFilesAndLines( branch, root, include, exclude )
+            .then( function( map ) { return { map: map, ok: true }; } )
+            .catch( function( error )
+            {
+                debug( 'newTodoFilter: diff failed for ' + root + ': ' + error.message );
+                return { map: new Map(), ok: false };
+            } );
+        var untrackedPromise = git.getUntrackedFiles( root, include, exclude )
+            .catch( function( error )
+            {
+                debug( 'newTodoFilter: status failed for ' + root + ': ' + error.message );
+                return [];
+            } );
+
+        return Promise.all( [ diffPromise, untrackedPromise ] ).then( function( both )
+        {
+            return { root: root, map: both[ 0 ].map, ok: both[ 0 ].ok, untracked: both[ 1 ], onBaseBranch: false };
+        } );
+    } );
 }
 
 function refresh( resolveBranch, roots, globs )
@@ -136,6 +217,7 @@ function refresh( resolveBranch, roots, globs )
         coveredRoots = [];
         failedRoots = [];
         noBranchRoots = [];
+        onBaseBranchRoots = [];
         return Promise.resolve( { allFailed: false, noBranchRoots: [] } );
     }
 
@@ -144,7 +226,7 @@ function refresh( resolveBranch, roots, globs )
     var blankRoots = [];
     var diffableRoots = roots.filter( function( root )
     {
-        var branch = resolveBranch( root );
+        var branch = resolveBranchForRoot( resolveBranch, root );
         if( isBlankBranch( branch ) )
         {
             blankRoots.push( root );
@@ -159,29 +241,14 @@ function refresh( resolveBranch, roots, globs )
         coveredRoots = [];
         failedRoots = [];
         noBranchRoots = blankRoots;
+        onBaseBranchRoots = [];
         return Promise.resolve( { allFailed: false, noBranchRoots: blankRoots.slice() } );
     }
 
     return Promise.all( diffableRoots.map( function( root )
     {
-        var branch = resolveBranch( root );
-        var diffPromise = git.getChangedFilesAndLines( branch, root, include, exclude )
-            .then( function( map ) { return { map: map, ok: true, branch: branch }; } )
-            .catch( function( error )
-            {
-                debug( 'newTodoFilter: diff failed for ' + root + ': ' + error.message );
-                return { map: new Map(), ok: false, branch: branch };
-            } );
-        var untrackedPromise = git.getUntrackedFiles( root, include, exclude )
-            .catch( function( error )
-            {
-                debug( 'newTodoFilter: status failed for ' + root + ': ' + error.message );
-                return [];
-            } );
-        return Promise.all( [ diffPromise, untrackedPromise ] ).then( function( both )
-        {
-            return { root: root, map: both[ 0 ].map, ok: both[ 0 ].ok, untracked: both[ 1 ] };
-        } );
+        var branch = resolveBranchForRoot( resolveBranch, root );
+        return loadDiffStateForRoot( root, branch, include, exclude );
     } ) ).then( function( results )
     {
         if( generation !== refreshGeneration )
@@ -192,8 +259,15 @@ function refresh( resolveBranch, roots, globs )
         var next = new Map();
         var nextCovered = [];
         var nextFailed = [];
+        var nextOnBaseBranch = [];
         results.forEach( function( result )
         {
+            if( result.onBaseBranch === true )
+            {
+                nextOnBaseBranch.push( result.root );
+                return;
+            }
+
             result.map.forEach( function( lines, relPath )
             {
                 next.set( path.join( result.root, relPath ), lines );
@@ -215,8 +289,10 @@ function refresh( resolveBranch, roots, globs )
         coveredRoots = nextCovered;
         failedRoots = nextFailed;
         noBranchRoots = blankRoots;
+        onBaseBranchRoots = nextOnBaseBranch;
+        var nonOnBaseResults = results.filter( function( result ) { return result.onBaseBranch !== true; } );
         return {
-            allFailed: results.length > 0 && results.every( function( r ) { return r.ok === false; } ),
+            allFailed: nonOnBaseResults.length > 0 && nonOnBaseResults.every( function( r ) { return r.ok === false; } ),
             noBranchRoots: blankRoots.slice()
         };
     } );
@@ -226,7 +302,8 @@ function isOwningRepoKnown( repoRoot )
 {
     return coveredRoots.indexOf( repoRoot ) !== -1 ||
         failedRoots.indexOf( repoRoot ) !== -1 ||
-        noBranchRoots.indexOf( repoRoot ) !== -1;
+        noBranchRoots.indexOf( repoRoot ) !== -1 ||
+        onBaseBranchRoots.indexOf( repoRoot ) !== -1;
 }
 
 function extendForRepo( repoRoot, resolveBranch, globs )
@@ -245,7 +322,7 @@ function extendForRepo( repoRoot, resolveBranch, globs )
         }
     }
 
-    var branch = resolveBranch( repoRoot );
+    var branch = resolveBranchForRoot( resolveBranch, repoRoot );
     if( isBlankBranch( branch ) )
     {
         noBranchRoots.push( repoRoot );
@@ -257,20 +334,7 @@ function extendForRepo( repoRoot, resolveBranch, globs )
     var include = ( globs && globs.include ) || [];
     var exclude = ( globs && globs.exclude ) || [];
 
-    var diffPromise = git.getChangedFilesAndLines( branch, repoRoot, include, exclude )
-        .then( function( map ) { return { map: map, ok: true }; } )
-        .catch( function( error )
-        {
-            debug( 'newTodoFilter: extend diff failed for ' + repoRoot + ': ' + error.message );
-            return { map: new Map(), ok: false };
-        } );
-    var untrackedPromise = git.getUntrackedFiles( repoRoot, include, exclude )
-        .catch( function()
-        {
-            return [];
-        } );
-
-    var extendPromise = Promise.all( [ diffPromise, untrackedPromise ] ).then( function( both )
+    var extendPromise = loadDiffStateForRoot( repoRoot, branch, include, exclude ).then( function( result )
     {
         if( generation !== refreshGeneration )
         {
@@ -282,17 +346,21 @@ function extendForRepo( repoRoot, resolveBranch, globs )
             return;
         }
 
-        var diff = both[ 0 ];
-        var untracked = both[ 1 ];
-        diff.map.forEach( function( lines, relPath )
+        if( result.onBaseBranch === true )
+        {
+            onBaseBranchRoots.push( repoRoot );
+            return;
+        }
+
+        result.map.forEach( function( lines, relPath )
         {
             rangesByPath.set( path.join( repoRoot, relPath ), lines );
         } );
-        untracked.forEach( function( relPath )
+        result.untracked.forEach( function( relPath )
         {
             rangesByPath.set( path.join( repoRoot, relPath ), [ [ 1, Infinity ] ] );
         } );
-        if( diff.ok === true )
+        if( result.ok === true )
         {
             coveredRoots.push( repoRoot );
         }
@@ -322,3 +390,4 @@ module.exports.classifyUndiffable = classifyUndiffable;
 module.exports.refresh = refresh;
 module.exports.extendForRepo = extendForRepo;
 module.exports.isOwningRepoKnown = isOwningRepoKnown;
+module.exports.isOnBaseBranch = isOnBaseBranch;

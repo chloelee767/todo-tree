@@ -146,6 +146,70 @@ function findRepoRoot( dir )
     } );
 }
 
+function getCurrentBranch( repoRoot )
+{
+    if( !repoRoot )
+    {
+        return Promise.reject( new Error( 'Repository path is required.' ) );
+    }
+
+    return new Promise( function( resolve, reject )
+    {
+        var args = [ 'branch', '--show-current' ];
+        debug( 'Git branch args: ' + args );
+        var proc = spawn( config.gitPath(), args, { cwd: repoRoot } );
+        var stdoutBuffer = '';
+        var stderrBuffer = '';
+        var stdoutClosed = false;
+        var exitCode;
+        var settled = false;
+
+        function settle()
+        {
+            if( settled || stdoutClosed !== true || exitCode === undefined )
+            {
+                return;
+            }
+            settled = true;
+
+            if( exitCode !== 0 )
+            {
+                reject( new Error( 'Git branch stderr: ' + stderrBuffer ) );
+                return;
+            }
+
+            resolve( stdoutBuffer.trim() );
+        }
+
+        proc.stdout.on( 'data', function( data )
+        {
+            stdoutBuffer += data;
+        } );
+
+        proc.stdout.on( 'close', function()
+        {
+            stdoutClosed = true;
+            settle();
+        } );
+
+        proc.stderr.on( 'data', function( data )
+        {
+            stderrBuffer += data;
+        } );
+
+        proc.on( 'exit', function( code )
+        {
+            exitCode = code;
+            settle();
+        } );
+
+        proc.on( 'error', function( error )
+        {
+            reject( error );
+        } );
+    } );
+}
+
 function getUntrackedFiles( repoRoot, includeGlobs, excludeGlobs )
 {
     if( !repoRoot )
@@ -202,4 +266,5 @@ function getUntrackedFiles( repoRoot, includeGlobs, excludeGlobs )
 module.exports.init = init;
 module.exports.getChangedFilesAndLines = getChangedFilesAndLines;
 module.exports.findRepoRoot = findRepoRoot;
+module.exports.getCurrentBranch = getCurrentBranch;
 module.exports.getUntrackedFiles = getUntrackedFiles;

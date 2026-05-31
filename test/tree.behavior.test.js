@@ -631,6 +631,91 @@ QUnit.module( "behavioral tree", function()
         assert.ok( /- 2 no base branch configured/.test( treeItem.tooltip.value ), 'no-branch line added' );
     } );
 
+    QUnit.test( 'status node: workspace hidden-only on-base-branch uses not-shown copy and hidden tooltip bucket', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 0,
+            diffFailed: 0,
+            noBranch: 0,
+            onBaseBranch: 2,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: 'main'
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /New-todos/.test( child.label );
+        } );
+        var treeItem = provider.getTreeItem( node );
+
+        assert.equal( node.label, 'New-todos: 2 not shown' );
+        assert.ok( /\*\*Hidden\*\*/.test( treeItem.tooltip.value ) );
+        assert.ok( /- 2 on git base branch/.test( treeItem.tooltip.value ) );
+    } );
+
+    QUnit.test( 'status node: workspace combines hidden on-base-branch and shown fail-open undiffables', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 1,
+            diffFailed: 1,
+            noBranch: 1,
+            onBaseBranch: 2,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: 'main'
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /New-todos/.test( child.label );
+        } );
+        var treeItem = provider.getTreeItem( node );
+
+        assert.equal( node.label, 'New-todos: 2 not shown, 3 shown without filtering' );
+        assert.ok( /\*\*Hidden\*\*/.test( treeItem.tooltip.value ) );
+        assert.ok( /- 2 on git base branch/.test( treeItem.tooltip.value ) );
+        assert.ok( /\*\*Shown without filtering\*\*/.test( treeItem.tooltip.value ) );
+        assert.ok( /- 1 not in a git repository/.test( treeItem.tooltip.value ) );
+        assert.ok( /- 1 could not be diffed \(errors\)/.test( treeItem.tooltip.value ) );
+        assert.ok( /- 1 no base branch configured/.test( treeItem.tooltip.value ) );
+    } );
+
+    QUnit.test( 'status node: current-file on-base-branch keeps Current file not shown copy', function( assert )
+    {
+        var configStub = createConfig();
+        var tree = loadTreeModule( configStub );
+        var provider = new tree.TreeNodeProvider( { workspaceState: createWorkspaceState() }, function() {}, function() {} );
+
+        provider.setNewTodoStatus( {
+            enabled: true,
+            noRepo: 0,
+            diffFailed: 0,
+            noBranch: 0,
+            onBaseBranch: 1,
+            showUndiffableFiles: true,
+            scanMode: 'current file',
+            baseBranch: 'main'
+        } );
+
+        var node = provider.getChildren().find( function( child )
+        {
+            return child.isStatusNode === true && /Current file/.test( child.label );
+        } );
+
+        assert.equal( node.label, 'Current file not shown' );
+    } );
+
     QUnit.test( 'current-file undiffable fail-closed: Nothing found suppressed, singular node shown', function( assert )
     {
         var configStub = createConfig();

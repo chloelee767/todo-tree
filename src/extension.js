@@ -97,6 +97,7 @@ function activate( context )
     var scanProgressState;
     var revParseCache = new Map();
     var scannedUndiffable = { 'no-repo': new Set(), 'diff-failed': new Set(), 'no-branch': new Set() };
+    var scannedOnBaseBranch = new Set();
     var fileDecorationProvider;
 
     var SCAN_PROGRESS_ROOT_UNITS = 5;
@@ -1628,6 +1629,7 @@ function activate( context )
 
             if( forgotten.notebook && forgotten.notebook.uri && getSetting( 'tree.autoRefresh', true ) === true )
             {
+                clearNewTodoStatusForUri( forgotten.notebook.uri );
                 removeSearchResults( forgotten.notebook.uri, activeSearchResults );
                 documentScanCache.deleteByUri( forgotten.notebook.uri );
                 pendingDocumentRefreshes.delete( forgotten.notebookKey );
@@ -1870,6 +1872,16 @@ function activate( context )
         return getSearchResultsStore( store ).replaceUriResults( uri, results );
     }
 
+    function clearNewTodoStatusForUri( uri )
+    {
+        Object.keys( scannedUndiffable ).forEach( function( key )
+        {
+            scannedUndiffable[ key ].delete( uri.fsPath );
+        } );
+        scannedOnBaseBranch.delete( uri.fsPath );
+        updateNewTodoStatus();
+    }
+
     function getDocumentPatternFileName( document )
     {
         if( !document )
@@ -1919,6 +1931,7 @@ function activate( context )
     {
         if( !document || !config.isValidScheme( document.uri ) || isIncluded( document.uri ) !== true )
         {
+            clearNewTodoStatusForUri( document.uri );
             replaceSearchResults( document.uri, [], store );
             return Promise.resolve();
         }
@@ -1928,6 +1941,7 @@ function activate( context )
             var activeTarget = getActiveScanTarget();
             if( activeTarget !== document )
             {
+                clearNewTodoStatusForUri( document.uri );
                 replaceSearchResults( document.uri, [], store );
                 return Promise.resolve();
             }
@@ -1948,6 +1962,7 @@ function activate( context )
 
         if( !config.isValidScheme( notebook.uri ) || isIncluded( notebook.uri ) !== true )
         {
+            clearNewTodoStatusForUri( notebook.uri );
             replaceSearchResults( notebook.uri, [], store );
             return Promise.resolve();
         }
@@ -1957,6 +1972,7 @@ function activate( context )
             var activeTarget = getActiveScanTarget();
             if( !activeTarget || !activeTarget.uri || activeTarget.uri.toString() !== notebook.uri.toString() )
             {
+                clearNewTodoStatusForUri( notebook.uri );
                 replaceSearchResults( notebook.uri, [], store );
                 return Promise.resolve();
             }
@@ -2246,15 +2262,45 @@ function activate( context )
             return results;
         }
 
-        var reason = newTodoFilter.classifyUndiffable( uri.fsPath );
-        if( reason === 'no-repo' || reason === 'diff-failed' || reason === 'no-branch' )
+        Object.keys( scannedUndiffable ).forEach( function( key )
         {
-            scannedUndiffable[ reason ].add( uri.fsPath );
+            scannedUndiffable[ key ].delete( uri.fsPath );
+        } );
+        scannedOnBaseBranch.delete( uri.fsPath );
+
+        if( results.length > 0 )
+        {
+            var reason = newTodoFilter.classifyUndiffable( uri.fsPath );
+            if( reason === 'no-repo' || reason === 'diff-failed' || reason === 'no-branch' )
+            {
+                scannedUndiffable[ reason ].add( uri.fsPath );
+            }
+
+            if( typeof ( newTodoFilter.isOnBaseBranch ) === 'function' && newTodoFilter.isOnBaseBranch( uri.fsPath ) === true )
+            {
+                scannedOnBaseBranch.add( uri.fsPath );
+            }
         }
 
-        return results.filter( function( result )
+        var filteredResults = results.filter( function( result )
         {
             return newTodoFilter.isNewTodo( uri.fsPath, result.line );
+        } );
+
+        return filteredResults;
+    }
+
+    function updateNewTodoStatus()
+    {
+        provider.setNewTodoStatus( {
+            enabled: newTodoFilter.isEnabled(),
+            noRepo: scannedUndiffable[ 'no-repo' ].size,
+            diffFailed: scannedUndiffable[ 'diff-failed' ].size,
+            noBranch: scannedUndiffable[ 'no-branch' ].size,
+            onBaseBranch: scannedOnBaseBranch.size,
+            showUndiffableFiles: typeof ( config.newTodosShowUndiffableFiles ) === 'function' ? config.newTodosShowUndiffableFiles() : true,
+            scanMode: config.scanMode(),
+            baseBranch: config.newTodosGitBaseBranch()
         } );
     }
 
@@ -2374,6 +2420,7 @@ function activate( context )
         {
             Promise.resolve( refreshScanTarget( target, targetStore ) ).then( function()
             {
+                updateNewTodoStatus();
                 if( targetStore === activeSearchResults )
                 {
                     applyDirtyResultsToTree( { fullSort: false, refilterAll: false }, activeSearchResults );
@@ -2537,6 +2584,7 @@ function activate( context )
         scannedUndiffable[ 'no-repo' ].clear();
         scannedUndiffable[ 'diff-failed' ].clear();
         scannedUndiffable[ 'no-branch' ].clear();
+        scannedOnBaseBranch.clear();
         searchList = getWorkspaceSearchRoots();
         var workspaceBoundaryRoots = getWorkspaceBoundaryRoots();
         var generation = beginScan( searchList );
@@ -2591,15 +2639,7 @@ function activate( context )
             prepareStreamingTreeApply( generation, nextSearchResults );
             activeSearchResults = nextSearchResults;
             nextSearchResults = undefined;
-            provider.setNewTodoStatus( {
-                enabled: newTodoFilter.isEnabled(),
-                noRepo: scannedUndiffable[ 'no-repo' ].size,
-                diffFailed: scannedUndiffable[ 'diff-failed' ].size,
-                noBranch: scannedUndiffable[ 'no-branch' ].size,
-                showUndiffableFiles: typeof ( config.newTodosShowUndiffableFiles ) === 'function' ? config.newTodosShowUndiffableFiles() : true,
-                scanMode: config.scanMode(),
-                baseBranch: config.newTodosGitBaseBranch()
-            } );
+            updateNewTodoStatus();
             applyDirtyResultsToTree( { fullSort: true, refilterAll: needsFullFilter }, activeSearchResults );
             fileDecorationProvider.refresh();
         } ).catch( function( error )
@@ -4178,6 +4218,7 @@ function activate( context )
 
                     if( !keep )
                     {
+                        clearNewTodoStatusForUri( document.uri );
                         removeSearchResults( document.uri, activeSearchResults );
                         documentScanCache.deleteByUri( document.uri );
 

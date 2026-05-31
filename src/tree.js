@@ -472,7 +472,7 @@ class TreeNodeProvider
 
     setNewTodoStatus( status )
     {
-        this._newTodoStatus = status ? Object.assign( { noBranch: 0 }, status ) : status;
+        this._newTodoStatus = status ? Object.assign( { noBranch: 0, onBaseBranch: 0 }, status ) : status;
     }
 
     getChildren( node )
@@ -529,8 +529,7 @@ class TreeNodeProvider
                 var nts2 = this._newTodoStatus;
                 var suppressNothingFound = nts2 && nts2.enabled === true &&
                     nts2.scanMode === 'current file' &&
-                    nts2.showUndiffableFiles === false &&
-                    ( nts2.noRepo + nts2.diffFailed + nts2.noBranch ) > 0;
+                    ( nts2.onBaseBranch + ( nts2.showUndiffableFiles === true ? 0 : ( nts2.noRepo + nts2.diffFailed + nts2.noBranch ) ) ) > 0;
 
                 if( suppressNothingFound !== true )
                 {
@@ -564,49 +563,86 @@ class TreeNodeProvider
             }
 
             var nts = this._newTodoStatus;
-            if( nts && nts.enabled === true && ( nts.noRepo + nts.diffFailed + nts.noBranch ) > 0 )
+            if( nts && nts.enabled === true )
             {
-                var totalUndiffable = nts.noRepo + nts.diffFailed + nts.noBranch;
-                var label;
-                if( nts.scanMode === 'current file' )
-                {
-                    label = nts.showUndiffableFiles === true ?
-                        'Current file shown without filtering' :
-                        'Current file not shown';
-                }
-                else if( nts.showUndiffableFiles === true )
-                {
-                    label = 'New-todos: ' + totalUndiffable + ' shown without filtering';
-                }
-                else
-                {
-                    label = 'New-todos: ' + totalUndiffable + ' not shown';
-                }
+                var shownWithoutFiltering = nts.showUndiffableFiles === true ? ( nts.noRepo + nts.diffFailed + nts.noBranch ) : 0;
+                var hiddenUndiffable = nts.showUndiffableFiles === true ? 0 : ( nts.noRepo + nts.diffFailed + nts.noBranch );
+                var hiddenCount = nts.onBaseBranch + hiddenUndiffable;
 
-                var tooltip = new vscode.MarkdownString();
-                var bucketLabel = nts.showUndiffableFiles === true ? 'Shown without filtering' : 'Hidden';
-                tooltip.appendMarkdown( '**' + bucketLabel + '**\n\n' );
-                if( nts.noRepo > 0 )
+                if( hiddenCount > 0 || shownWithoutFiltering > 0 )
                 {
-                    tooltip.appendMarkdown( '- ' + nts.noRepo + ' not in a git repository\n' );
-                }
-                if( nts.diffFailed > 0 )
-                {
-                    tooltip.appendMarkdown( '- ' + nts.diffFailed + ' could not be diffed (errors)\n' );
-                }
-                if( nts.noBranch > 0 )
-                {
-                    tooltip.appendMarkdown( '- ' + nts.noBranch + ' no base branch configured\n' );
-                }
+                    var label;
+                    if( nts.scanMode === 'current file' )
+                    {
+                        label = hiddenCount > 0 ? 'Current file not shown' : 'Current file shown without filtering';
+                    }
+                    else if( hiddenCount > 0 && shownWithoutFiltering > 0 )
+                    {
+                        label = 'New-todos: ' + hiddenCount + ' not shown, ' + shownWithoutFiltering + ' shown without filtering';
+                    }
+                    else if( hiddenCount > 0 )
+                    {
+                        label = 'New-todos: ' + hiddenCount + ' not shown';
+                    }
+                    else
+                    {
+                        label = 'New-todos: ' + shownWithoutFiltering + ' shown without filtering';
+                    }
 
-                result.unshift( {
-                    label: label,
-                    notExported: true,
-                    isStatusNode: true,
-                    icon: 'git-branch',
-                    tooltip: tooltip,
-                    opensUndiffableSetting: true
-                } );
+                    var tooltip = new vscode.MarkdownString();
+                    if( hiddenCount > 0 )
+                    {
+                        tooltip.appendMarkdown( '**Hidden**\n\n' );
+                        if( nts.onBaseBranch > 0 )
+                        {
+                            tooltip.appendMarkdown( '- ' + nts.onBaseBranch + ' on git base branch\n' );
+                        }
+                        if( nts.showUndiffableFiles !== true )
+                        {
+                            if( nts.noRepo > 0 )
+                            {
+                                tooltip.appendMarkdown( '- ' + nts.noRepo + ' not in a git repository\n' );
+                            }
+                            if( nts.diffFailed > 0 )
+                            {
+                                tooltip.appendMarkdown( '- ' + nts.diffFailed + ' could not be diffed (errors)\n' );
+                            }
+                            if( nts.noBranch > 0 )
+                            {
+                                tooltip.appendMarkdown( '- ' + nts.noBranch + ' no base branch configured\n' );
+                            }
+                        }
+                    }
+                    if( shownWithoutFiltering > 0 )
+                    {
+                        if( hiddenCount > 0 )
+                        {
+                            tooltip.appendMarkdown( '\n' );
+                        }
+                        tooltip.appendMarkdown( '**Shown without filtering**\n\n' );
+                        if( nts.noRepo > 0 )
+                        {
+                            tooltip.appendMarkdown( '- ' + nts.noRepo + ' not in a git repository\n' );
+                        }
+                        if( nts.diffFailed > 0 )
+                        {
+                            tooltip.appendMarkdown( '- ' + nts.diffFailed + ' could not be diffed (errors)\n' );
+                        }
+                        if( nts.noBranch > 0 )
+                        {
+                            tooltip.appendMarkdown( '- ' + nts.noBranch + ' no base branch configured\n' );
+                        }
+                    }
+
+                    result.unshift( {
+                        label: label,
+                        notExported: true,
+                        isStatusNode: true,
+                        icon: 'git-branch',
+                        tooltip: tooltip,
+                        opensUndiffableSetting: true
+                    } );
+                }
             }
 
             var compacted = [];

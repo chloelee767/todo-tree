@@ -7,7 +7,8 @@ function loadFilter( gitStub )
         './git.js': Object.assign( {
             init: function() {},
             getChangedFilesAndLines: function() { return Promise.resolve( new Map() ); },
-            getUntrackedFiles: function() { return Promise.resolve( [] ); }
+            getUntrackedFiles: function() { return Promise.resolve( [] ); },
+            getCurrentBranch: function() { return Promise.resolve( 'feature/work' ); }
         }, gitStub || {} )
     } );
 }
@@ -478,6 +479,88 @@ QUnit.test( 'refresh resolves branches per root and marks only blank roots as no
     } );
 } );
 
+QUnit.test( 'refresh hides files for repos already on the resolved base branch', function( assert )
+{
+    var done = assert.async();
+    var diffCalls = 0;
+    var f = loadFilter( {
+        getCurrentBranch: function() { return Promise.resolve( 'main' ); },
+        getChangedFilesAndLines: function()
+        {
+            diffCalls++;
+            return Promise.resolve( new Map( [ [ 'a.js', [ [ 1, 1 ] ] ] ] ) );
+        }
+    } );
+
+    f.init( function() {} );
+    f.setEnabled( true );
+    f.setShowUndiffableFiles( true );
+
+    f.refresh( constantBranch( 'main' ), [ '/repo' ], { include: [], exclude: [] } ).then( function()
+    {
+        assert.equal( diffCalls, 0, 'git diff skipped when already on base branch' );
+        assert.equal( f.isOnBaseBranch( '/repo/a.js' ), true, 'repo is tracked as hidden' );
+        assert.equal( f.classifyUndiffable( '/repo/a.js' ), null, 'hidden is not an undiffable reason' );
+        assert.equal( f.isNewTodo( '/repo/a.js', 1 ), false, 'todo stays hidden' );
+        done();
+    } );
+} );
+
+QUnit.test( 'refresh keeps normal diff behavior when current branch differs from base branch', function( assert )
+{
+    var done = assert.async();
+    var f = loadFilter( {
+        getCurrentBranch: function() { return Promise.resolve( 'feature/work' ); },
+        getChangedFilesAndLines: function() { return Promise.resolve( new Map( [ [ 'a.js', [ [ 5, 2 ] ] ] ] ) ); }
+    } );
+
+    f.init( function() {} );
+    f.setEnabled( true );
+
+    f.refresh( constantBranch( 'main' ), [ '/repo' ], { include: [], exclude: [] } ).then( function()
+    {
+        assert.equal( f.isOnBaseBranch( '/repo/a.js' ), false );
+        assert.equal( f.isNewTodo( '/repo/a.js', 5 ), true );
+        done();
+    } );
+} );
+
+QUnit.test( 'refresh keeps on-base-branch separate from no-branch in mixed roots', function( assert )
+{
+    var done = assert.async();
+    var f = loadFilter( {
+        getCurrentBranch: function( root )
+        {
+            return Promise.resolve( root === '/hidden' ? 'main' : 'feature/work' );
+        },
+        getChangedFilesAndLines: function( branch, root )
+        {
+            if( root === '/shown' )
+            {
+                return Promise.resolve( new Map( [ [ 'shown.js', [ [ 2, 1 ] ] ] ] ) );
+            }
+
+            return Promise.resolve( new Map() );
+        }
+    } );
+
+    f.init( function() {} );
+    f.setEnabled( true );
+
+    f.refresh( function( root )
+    {
+        if( root === '/blank' ) { return ''; }
+        return 'main';
+    }, [ '/hidden', '/shown', '/blank' ], { include: [], exclude: [] } ).then( function( summary )
+    {
+        assert.deepEqual( summary.noBranchRoots, [ '/blank' ] );
+        assert.equal( f.isOnBaseBranch( '/hidden/a.js' ), true );
+        assert.equal( f.classifyUndiffable( '/blank/a.js' ), 'no-branch' );
+        assert.equal( f.isNewTodo( '/shown/shown.js', 2 ), true );
+        done();
+    } );
+} );
+
 QUnit.test( 'extendForRepo resolves the branch lazily for a discovered repo', function( assert )
 {
     var done = assert.async();
@@ -504,6 +587,34 @@ QUnit.test( 'extendForRepo resolves the branch lazily for a discovered repo', fu
     {
         assert.deepEqual( seen[ seen.length - 1 ], { branch: 'release', root: '/mapped' } );
         assert.equal( f.isNewTodo( path.join( '/mapped', 'a.js' ), 1 ), true );
+        done();
+    } );
+} );
+
+QUnit.test( 'extendForRepo records a lazily discovered repo as on-base-branch', function( assert )
+{
+    var done = assert.async();
+    var diffCalls = 0;
+    var f = loadFilter( {
+        getCurrentBranch: function() { return Promise.resolve( 'main' ); },
+        getChangedFilesAndLines: function()
+        {
+            diffCalls++;
+            return Promise.resolve( new Map() );
+        }
+    } );
+
+    f.init( function() {} );
+    f.setEnabled( true );
+
+    f.refresh( constantBranch( 'main' ), [ '/existing' ], { include: [], exclude: [] } ).then( function()
+    {
+        return f.extendForRepo( '/late', constantBranch( 'main' ), { include: [], exclude: [] } );
+    } ).then( function()
+    {
+        assert.equal( diffCalls, 0, 'extend also skips git diff when already on base branch' );
+        assert.equal( f.isOwningRepoKnown( '/late' ), true );
+        assert.equal( f.isOnBaseBranch( '/late/file.js' ), true );
         done();
     } );
 } );

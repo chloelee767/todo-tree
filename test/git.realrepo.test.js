@@ -2,7 +2,15 @@ var fs = require( 'fs' );
 var os = require( 'os' );
 var path = require( 'path' );
 var { execFileSync } = require( 'child_process' );
-var git = require( '../src/git.js' );
+var helpers = require( './moduleHelpers.js' );
+var git = helpers.loadWithStubs( '../src/git.js', {
+    './config.js': {
+        gitPath: function()
+        {
+            return 'git';
+        }
+    }
+} );
 
 function runGit( cwd, args )
 {
@@ -93,6 +101,20 @@ QUnit.module( 'real-repo git', function( hooks )
         git.getUntrackedFiles( root, [], [] ).then( function( files )
         {
             assert.deepEqual( files, [ 'untracked.js' ], 'returns the untracked path' );
+            done();
+        } ).catch( function( err )
+        {
+            assert.ok( false, 'should not reject: ' + err.message );
+            done();
+        } );
+    } );
+
+    QUnit.test( 'getCurrentBranch returns the checked-out branch in a real repo', function( assert )
+    {
+        var done = assert.async();
+        git.getCurrentBranch( root ).then( function( branch )
+        {
+            assert.strictEqual( branch, 'base', 'returns the actual checked-out branch name' );
             done();
         } ).catch( function( err )
         {

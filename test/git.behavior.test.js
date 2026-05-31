@@ -37,17 +37,20 @@ function loadGitWithStubbedSpawn( stdoutLines, stderrData, exitCode )
 
                 process.nextTick( function()
                 {
+                    function writeStdout()
+                    {
+                        stdoutChunks.forEach( function( chunk )
+                        {
+                            proc.stdout.push( chunk );
+                        } );
+                        proc.stdout.push( null );
+                    }
+
                     if( options.spawnError )
                     {
                         proc.emit( 'error', options.spawnError );
                         return;
                     }
-
-                    stdoutChunks.forEach( function( chunk )
-                    {
-                        proc.stdout.push( chunk );
-                    } );
-                    proc.stdout.push( null );
 
                     if( stderrData !== undefined )
                     {
@@ -58,6 +61,15 @@ function loadGitWithStubbedSpawn( stdoutLines, stderrData, exitCode )
                     {
                         proc.stderr.emit( 'data', options.stderr );
                     }
+
+                    if( options.exitBeforeStdout )
+                    {
+                        proc.emit( 'exit', exitCode !== undefined ? exitCode : 0 );
+                        process.nextTick( writeStdout );
+                        return;
+                    }
+
+                    writeStdout();
 
                     if( options.exitAfterStdout )
                     {
@@ -364,6 +376,82 @@ QUnit.test( 'findRepoRoot rejects when spawning git fails', function( assert )
     git.findRepoRoot( '/repo/subdir' ).catch( function( err )
     {
         assert.strictEqual( err.message, 'spawn failed', 'rejects with the spawn error' );
+        done();
+    } );
+} );
+
+QUnit.test( 'getCurrentBranch returns the trimmed current branch on success', function( assert )
+{
+    var done = assert.async();
+    var git = loadGitWithStubbedSpawn( {
+        stdout: 'feature/hide-base-branch\n',
+        exitCode: 0,
+        exitAfterStdout: true
+    } );
+    git.init( function() {} );
+
+    git.getCurrentBranch( '/repo' ).then( function( branch )
+    {
+        assert.strictEqual( branch, 'feature/hide-base-branch' );
+        assert.deepEqual( git._lastSpawnCall.args, [ 'branch', '--show-current' ] );
+        assert.deepEqual( git._lastSpawnCall.options, { cwd: '/repo' } );
+        done();
+    } );
+} );
+
+QUnit.test( 'getCurrentBranch uses the configured git binary', function( assert )
+{
+    var done = assert.async();
+    var git = loadGitWithStubbedSpawn( {
+        stdout: 'main\n',
+        exitCode: 0,
+        exitAfterStdout: true,
+        configuredGitPath: '/custom/bin/git'
+    } );
+    git.init( function() {} );
+
+    git.getCurrentBranch( '/repo' ).then( function()
+    {
+        assert.strictEqual( git._lastSpawnCall.command, '/custom/bin/git' );
+        done();
+    } );
+} );
+
+QUnit.test( 'getCurrentBranch rejects cleanly on git failure', function( assert )
+{
+    var done = assert.async();
+    var git = loadGitWithStubbedSpawn( {
+        stderr: 'fatal: not a git repository',
+        exitCode: 128,
+        exitAfterStdout: true
+    } );
+    git.init( function() {} );
+
+    git.getCurrentBranch( '/repo' ).then( function()
+    {
+        assert.ok( false, 'expected rejection' );
+        done();
+    } ).catch( function( error )
+    {
+        assert.ok( /Git branch stderr/i.test( error.message ) );
+        done();
+    } );
+} );
+
+QUnit.test( 'getCurrentBranch waits for stdout to close before resolving', function( assert )
+{
+    var done = assert.async();
+    assert.timeout( 1000 );
+    var git = loadGitWithStubbedSpawn( {
+        stdout: 'feature/hide-base-branch\n',
+        exitCode: 0,
+        exitBeforeStdout: true
+    } );
+    git.init( function() {} );
+
+    git.getCurrentBranch( '/repo' ).then( function( branch )
+    {
+        assert.strictEqual( branch, 'feature/hide-base-branch', 'resolves after stdout drains' );
         done();
     } );
 } );

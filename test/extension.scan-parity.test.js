@@ -1273,8 +1273,11 @@ function createExtensionHarness( options )
         './newTodoFilter.js': Object.assign( {
             init: function() {},
             setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
             isEnabled: function() { return false; },
+            classifyUndiffable: function() { return null; },
             isNewTodo: function() { return true; },
+            isOnBaseBranch: function() { return false; },
             refresh: function() { return Promise.resolve( { allFailed: false } ); }
         }, options.newTodoFilterStub || {} ),
         './git.js': Object.assign( {
@@ -1496,6 +1499,7 @@ QUnit.test( "new-todos filter threads scanned undiffable counts to the provider 
             noRepo: 0,
             diffFailed: 1,
             noBranch: 0,
+            onBaseBranch: 0,
             showUndiffableFiles: true,
             scanMode: 'workspace',
             baseBranch: ''
@@ -1558,6 +1562,7 @@ QUnit.test( "new-todos filter counts hidden no-repo files separately from diff f
             noRepo: 1,
             diffFailed: 0,
             noBranch: 0,
+            onBaseBranch: 0,
             showUndiffableFiles: true,
             scanMode: 'workspace',
             baseBranch: ''
@@ -1626,6 +1631,7 @@ QUnit.test( "new-todos filter counts undiffable files once even when one file yi
             noRepo: 0,
             diffFailed: 1,
             noBranch: 0,
+            onBaseBranch: 0,
             showUndiffableFiles: true,
             scanMode: 'workspace',
             baseBranch: ''
@@ -1689,10 +1695,327 @@ QUnit.test( 'new-todos filter threads no-branch counts to the provider', functio
             noRepo: 0,
             diffFailed: 0,
             noBranch: 1,
+            onBaseBranch: 0,
             showUndiffableFiles: true,
             scanMode: 'workspace',
             baseBranch: ''
         } );
+    } );
+} );
+
+QUnit.test( 'new-todos filter threads on-base-branch counts separately from no-branch', function( assert )
+{
+    var fixture = [ {
+        uri: matrixHelpers.createUri( '/workspace/src/hidden.js' ),
+        actualTag: 'TODO',
+        displayText: 'hidden item',
+        continuationText: [],
+        line: 1
+    } ];
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        ripgrepMatches: [ {
+            fsPath: 'src/hidden.js',
+            line: 1,
+            column: 1,
+            match: 'TODO hidden item'
+        } ],
+        fileContents: {
+            '/workspace/src/hidden.js': '// TODO hidden item'
+        },
+        scanTextImpl: function( uri )
+        {
+            return uri.fsPath === '/workspace/src/hidden.js' ? fixture : [];
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function() { return null; },
+            isOnBaseBranch: function( fsPath ) { return fsPath === '/workspace/src/hidden.js'; },
+            isNewTodo: function() { return false; },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); }
+        },
+        gitStub: {
+            findRepoRoot: function() { return Promise.resolve( '/workspace' ); }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.deepEqual( harness.provider.newTodoStatus, {
+            enabled: true,
+            noRepo: 0,
+            diffFailed: 0,
+            noBranch: 0,
+            onBaseBranch: 1,
+            showUndiffableFiles: true,
+            scanMode: 'workspace',
+            baseBranch: ''
+        } );
+    } );
+} );
+
+QUnit.test( 'new-todos filter counts on-base-branch files once even when one file yields multiple todos', function( assert )
+{
+    var fixture = [ {
+        uri: matrixHelpers.createUri( '/workspace/src/hidden.js' ),
+        actualTag: 'TODO',
+        displayText: 'first hidden item',
+        continuationText: [],
+        line: 1
+    }, {
+        uri: matrixHelpers.createUri( '/workspace/src/hidden.js' ),
+        actualTag: 'TODO',
+        displayText: 'second hidden item',
+        continuationText: [],
+        line: 2
+    } ];
+    var harness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        ripgrepMatches: [ {
+            fsPath: 'src/hidden.js',
+            line: 1,
+            column: 1,
+            match: 'TODO first hidden item'
+        } ],
+        fileContents: {
+            '/workspace/src/hidden.js': '// TODO first hidden item\n// TODO second hidden item'
+        },
+        scanTextImpl: function( uri )
+        {
+            return uri.fsPath === '/workspace/src/hidden.js' ? fixture : [];
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function() { return null; },
+            isOnBaseBranch: function( fsPath ) { return fsPath === '/workspace/src/hidden.js'; },
+            isNewTodo: function() { return false; },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); }
+        },
+        gitStub: {
+            findRepoRoot: function() { return Promise.resolve( '/workspace' ); }
+        }
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.provider.newTodoStatus.onBaseBranch, 1 );
+    } );
+} );
+
+QUnit.test( 'base-branch files with zero TODO results are not counted as hidden or shown as hidden in current-file mode', function( assert )
+{
+    var cleanDocument = matrixHelpers.createDocument( '/tmp/clean.js', 'const clean = true;' );
+    var statusHarness = createExtensionHarness( {
+        scanMode: 'workspace',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        workspaceFolders: [ { uri: matrixHelpers.createUri( '/workspace' ), name: 'workspace' } ],
+        ripgrepMatches: [ {
+            fsPath: 'src/clean.js',
+            line: 1,
+            column: 1,
+            match: 'TODO clean placeholder'
+        } ],
+        scanTextImpl: function()
+        {
+            return [];
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function() { return null; },
+            isOnBaseBranch: function( fsPath ) { return fsPath === '/workspace/src/clean.js'; },
+            isNewTodo: function() { return false; },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); }
+        },
+        gitStub: {
+            findRepoRoot: function() { return Promise.resolve( '/workspace' ); }
+        },
+        fileContents: {
+            '/workspace/src/clean.js': 'const clean = true;'
+        }
+    } );
+    var treeHarness = createExtensionHarness( {
+        useActualTreeProvider: true,
+        scanMode: 'current file',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        visibleTextEditors: [ { document: cleanDocument } ],
+        activeTextEditor: { document: cleanDocument },
+        scanDocumentImpl: function()
+        {
+            return [];
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            classifyUndiffable: function() { return null; },
+            isOnBaseBranch: function( fsPath ) { return fsPath === '/tmp/clean.js'; },
+            isNewTodo: function() { return false; },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); }
+        },
+        gitStub: {
+            findRepoRoot: function() { return Promise.resolve( '/tmp' ); }
+        },
+        fileContents: {}
+    } );
+
+    statusHarness.extension.activate( statusHarness.context );
+    treeHarness.extension.activate( treeHarness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        var labels = treeHarness.provider.getChildren().map( function( node )
+        {
+            return node.label;
+        } );
+
+        assert.equal( statusHarness.provider.newTodoStatus.onBaseBranch, 0 );
+        assert.ok( labels.indexOf( 'Nothing found' ) >= 0, 'empty current file still reports Nothing found' );
+        assert.equal( labels.indexOf( 'Current file not shown' ), -1, 'no hidden-status explanation is shown' );
+    } );
+} );
+
+QUnit.test( 'closing a late-reconciled hidden file clears its on-base-branch hidden status', function( assert )
+{
+    var extendDeferred = createDeferred();
+    var timeoutCallbacks = [];
+    var repoKnown = false;
+    var hiddenDocument = matrixHelpers.createDocument( '/external-a/late-close.js', '// TODO external late item' );
+    var harness = createExtensionHarness( {
+        scanMode: 'open files',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        newTodosGitBaseBranch: 'main',
+        newTodosGitTimeoutMs: 1,
+        visibleTextEditors: [ { document: hiddenDocument } ],
+        activeTextEditor: { document: hiddenDocument },
+        scanDocumentImpl: function( document )
+        {
+            return [ {
+                uri: document.uri,
+                actualTag: 'TODO',
+                displayText: path.basename( document.fileName ),
+                continuationText: [],
+                line: 1
+            } ];
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            isNewTodo: function( fsPath )
+            {
+                return !( repoKnown === true && fsPath === '/external-a/late-close.js' );
+            },
+            isOnBaseBranch: function( fsPath )
+            {
+                return repoKnown === true && fsPath === '/external-a/late-close.js';
+            },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); },
+            isOwningRepoKnown: function() { return repoKnown; },
+            extendForRepo: function()
+            {
+                return extendDeferred.promise.then( function()
+                {
+                    repoKnown = true;
+                } );
+            },
+            classifyUndiffable: function() { return null; }
+        },
+        gitStub: {
+            findRepoRoot: function( dir )
+            {
+                if( dir.indexOf( '/external-a' ) === 0 )
+                {
+                    return Promise.resolve( '/external-a' );
+                }
+
+                return Promise.resolve( null );
+            }
+        },
+        timerStubs: {
+            setTimeout: function( callback, delay )
+            {
+                var handle = { callback: callback, delay: delay };
+                timeoutCallbacks.push( handle );
+                return handle;
+            },
+            clearTimeout: function( handle )
+            {
+                timeoutCallbacks = timeoutCallbacks.filter( function( pending )
+                {
+                    return pending !== handle;
+                } );
+            },
+            setInterval: function() { return {}; },
+            clearInterval: function() {}
+        },
+        fileContents: {}
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        var gitTimeouts = timeoutCallbacks.filter( function( handle )
+        {
+            return handle.delay === 1;
+        } );
+
+        assert.equal( gitTimeouts.length, 1, 'late extend timeout scheduled for the open file' );
+        gitTimeouts[ 0 ].callback();
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        extendDeferred.resolve();
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.provider.newTodoStatus.onBaseBranch, 1, 'hidden file is counted before close' );
+
+        harness.vscode.workspaceListeners.close( hiddenDocument );
+    } ).then( function()
+    {
+        var lastReplaceCall = harness.provider.replaceCalls[ harness.provider.replaceCalls.length - 1 ];
+
+        assert.equal( lastReplaceCall.uri.fsPath, '/external-a/late-close.js' );
+        assert.deepEqual( lastReplaceCall.results, [], 'closing removes the file results' );
+        assert.equal( harness.provider.newTodoStatus.onBaseBranch, 0, 'closing clears the hidden on-base-branch count' );
     } );
 } );
 
@@ -3141,6 +3464,221 @@ QUnit.test( 'late reconcile refreshes file decorations even while rebuild result
         assert.equal( fileDecorationRefreshes, 1, 'late reconcile refreshes decorations even before rebuild swap' );
         extendDeferredB.resolve();
         return matrixHelpers.flushAsyncWork();
+    } );
+} );
+
+QUnit.test( 'late reconcile recomputes new-todo status after a timed-out extend', function( assert )
+{
+    var extendDeferred = createDeferred();
+    var timeoutCallbacks = [];
+    var repoKnown = false;
+    var externalDocument = matrixHelpers.createDocument( '/external-a/late.js', '// TODO external late item' );
+    var harness = createExtensionHarness( {
+        scanMode: 'open files',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        newTodosGitBaseBranch: 'main',
+        newTodosGitTimeoutMs: 1,
+        visibleTextEditors: [ { document: externalDocument } ],
+        activeTextEditor: { document: externalDocument },
+        scanDocumentImpl: function( document )
+        {
+            return [ {
+                uri: document.uri,
+                actualTag: 'TODO',
+                displayText: path.basename( document.fileName ),
+                continuationText: [],
+                line: 1
+            } ];
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            isNewTodo: function( fsPath )
+            {
+                return !( repoKnown === true && fsPath === '/external-a/late.js' );
+            },
+            isOnBaseBranch: function( fsPath )
+            {
+                return repoKnown === true && fsPath === '/external-a/late.js';
+            },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); },
+            isOwningRepoKnown: function() { return repoKnown; },
+            extendForRepo: function()
+            {
+                return extendDeferred.promise.then( function()
+                {
+                    repoKnown = true;
+                } );
+            },
+            classifyUndiffable: function() { return null; }
+        },
+        gitStub: {
+            findRepoRoot: function( dir )
+            {
+                if( dir.indexOf( '/external-a' ) === 0 )
+                {
+                    return Promise.resolve( '/external-a' );
+                }
+
+                return Promise.resolve( null );
+            }
+        },
+        timerStubs: {
+            setTimeout: function( callback, delay )
+            {
+                var handle = { callback: callback, delay: delay };
+                timeoutCallbacks.push( handle );
+                return handle;
+            },
+            clearTimeout: function( handle )
+            {
+                timeoutCallbacks = timeoutCallbacks.filter( function( pending )
+                {
+                    return pending !== handle;
+                } );
+            },
+            setInterval: function() { return {}; },
+            clearInterval: function() {}
+        },
+        fileContents: {}
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        var gitTimeouts = timeoutCallbacks.filter( function( handle )
+        {
+            return handle.delay === 1;
+        } );
+
+        assert.equal( gitTimeouts.length, 1, 'late extend timeout scheduled for the open file' );
+        gitTimeouts[ 0 ].callback();
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.provider.newTodoStatus.onBaseBranch, 0, 'status is initially computed before the late extend resolves' );
+
+        extendDeferred.resolve();
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.provider.newTodoStatus.onBaseBranch, 1, 'late reconcile updates the hidden on-base-branch count' );
+    } );
+} );
+
+QUnit.test( 'late reconcile replaces prior hidden status bucket membership after reclassification', function( assert )
+{
+    var extendDeferred = createDeferred();
+    var timeoutCallbacks = [];
+    var repoKnown = false;
+    var externalDocument = matrixHelpers.createDocument( '/external-a/reclassified.js', '// TODO external late item' );
+    var harness = createExtensionHarness( {
+        scanMode: 'open files',
+        resourceConfig: { isDefaultRegex: true, enableMultiLine: false, regexCaseSensitive: true },
+        newTodosGitBaseBranch: 'main',
+        newTodosGitTimeoutMs: 1,
+        visibleTextEditors: [ { document: externalDocument } ],
+        activeTextEditor: { document: externalDocument },
+        scanDocumentImpl: function( document )
+        {
+            return [ {
+                uri: document.uri,
+                actualTag: 'TODO',
+                displayText: path.basename( document.fileName ),
+                continuationText: [],
+                line: 1
+            } ];
+        },
+        newTodoFilterStub: {
+            init: function() {},
+            setEnabled: function() {},
+            setShowUndiffableFiles: function() {},
+            isEnabled: function() { return true; },
+            isNewTodo: function( fsPath )
+            {
+                return !( repoKnown === true && fsPath === '/external-a/reclassified.js' );
+            },
+            isOnBaseBranch: function( fsPath )
+            {
+                return repoKnown === true && fsPath === '/external-a/reclassified.js';
+            },
+            refresh: function() { return Promise.resolve( { allFailed: false } ); },
+            isOwningRepoKnown: function() { return repoKnown; },
+            extendForRepo: function()
+            {
+                return extendDeferred.promise.then( function()
+                {
+                    repoKnown = true;
+                } );
+            },
+            classifyUndiffable: function( fsPath )
+            {
+                return repoKnown === true || fsPath !== '/external-a/reclassified.js' ? null : 'no-repo';
+            }
+        },
+        gitStub: {
+            findRepoRoot: function( dir )
+            {
+                if( dir.indexOf( '/external-a' ) === 0 )
+                {
+                    return Promise.resolve( '/external-a' );
+                }
+
+                return Promise.resolve( null );
+            }
+        },
+        timerStubs: {
+            setTimeout: function( callback, delay )
+            {
+                var handle = { callback: callback, delay: delay };
+                timeoutCallbacks.push( handle );
+                return handle;
+            },
+            clearTimeout: function( handle )
+            {
+                timeoutCallbacks = timeoutCallbacks.filter( function( pending )
+                {
+                    return pending !== handle;
+                } );
+            },
+            setInterval: function() { return {}; },
+            clearInterval: function() {}
+        },
+        fileContents: {}
+    } );
+
+    harness.extension.activate( harness.context );
+
+    return matrixHelpers.flushAsyncWork().then( function()
+    {
+        var gitTimeouts = timeoutCallbacks.filter( function( handle )
+        {
+            return handle.delay === 1;
+        } );
+
+        assert.equal( gitTimeouts.length, 1, 'late extend timeout scheduled for the open file' );
+        gitTimeouts[ 0 ].callback();
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.provider.newTodoStatus.noRepo, 1, 'status initially counts the file as undiffable' );
+        assert.equal( harness.provider.newTodoStatus.onBaseBranch, 0, 'status initially excludes the file from on-base-branch' );
+
+        extendDeferred.resolve();
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        return matrixHelpers.flushAsyncWork();
+    } ).then( function()
+    {
+        assert.equal( harness.provider.newTodoStatus.noRepo, 0, 'late reconcile removes the stale undiffable count' );
+        assert.equal( harness.provider.newTodoStatus.onBaseBranch, 1, 'late reconcile reclassifies the file onto the base branch' );
     } );
 } );
 

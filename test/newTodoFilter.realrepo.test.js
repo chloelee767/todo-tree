@@ -2,7 +2,34 @@ var fs = require( 'fs' );
 var os = require( 'os' );
 var path = require( 'path' );
 var { execFileSync } = require( 'child_process' );
-var newTodoFilter = require( '../src/newTodoFilter.js' );
+var helpers = require( './moduleHelpers.js' );
+
+var newTodoFilter = helpers.loadWithStubs( '../src/newTodoFilter.js', {
+    vscode: {
+        env: { appRoot: '' },
+        Uri: {
+            file: function( fsPath )
+            {
+                return { fsPath: fsPath };
+            }
+        },
+        workspace: {
+            getConfiguration: function()
+            {
+                return {
+                    get: function( key, defaultValue )
+                    {
+                        return defaultValue;
+                    },
+                    inspect: function()
+                    {
+                        return {};
+                    }
+                };
+            }
+        }
+    }
+} );
 
 function runGit( cwd, args )
 {
@@ -19,6 +46,7 @@ function createRepo()
     fs.writeFileSync( path.join( root, 'tracked.js' ), 'line1\nold todo\nline3\n' );
     runGit( root, [ 'add', 'tracked.js' ] );
     runGit( root, [ 'commit', '-m', 'init' ] );
+    runGit( root, [ 'checkout', '-b', 'feature/work' ] );
     fs.writeFileSync( path.join( root, 'tracked.js' ), 'line1\nold todo\nnew todo\n' );
     return root;
 }
@@ -57,6 +85,26 @@ QUnit.module( 'real-repo newTodoFilter', function( hooks )
             assert.strictEqual( newTodoFilter.classifyUndiffable( trackedPath ), null, 'file is diffable' );
             assert.strictEqual( newTodoFilter.isNewTodo( trackedPath, 2 ), false, 'old line is not new' );
             assert.strictEqual( newTodoFilter.isNewTodo( trackedPath, 3 ), true, 'added line is new' );
+            done();
+        } ).catch( function( err )
+        {
+            assert.ok( false, 'should not reject: ' + err.message );
+            done();
+        } );
+    } );
+
+    QUnit.test( 'current branch equal to base branch hides tracked todos regardless of fail-open', function( assert )
+    {
+        var done = assert.async();
+        runGit( root, [ 'checkout', 'base' ] );
+        newTodoFilter.setShowUndiffableFiles( true );
+        newTodoFilter.refresh( function() { return 'base'; }, [ root ], GLOBS ).then( function( summary )
+        {
+            assert.strictEqual( summary.allFailed, false, 'on-base-branch is not a diff failure' );
+            assert.strictEqual( newTodoFilter.classifyUndiffable( trackedPath ), null, 'file is not classified as undiffable' );
+            assert.strictEqual( newTodoFilter.isOnBaseBranch( trackedPath ), true, 'file is tracked as on-base-branch' );
+            assert.strictEqual( newTodoFilter.isNewTodo( trackedPath, 2 ), false, 'old line stays hidden' );
+            assert.strictEqual( newTodoFilter.isNewTodo( trackedPath, 3 ), false, 'new line stays hidden because repo is on base branch' );
             done();
         } ).catch( function( err )
         {
